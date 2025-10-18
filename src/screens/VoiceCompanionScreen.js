@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ElevenLabsProvider, useConversation } from '@elevenlabs/react-native';
 import VoiceAgentService from '../services/VoiceAgentService';
-import { Audio } from 'expo-audio';
+import { Audio } from 'expo-av';
 
 const ConversationScreen = ({ userData, onBack }) => {
   const conversation = useConversation({
@@ -49,9 +49,12 @@ const ConversationScreen = ({ userData, onBack }) => {
 
   const [isStarting, setIsStarting] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [connectTimeoutId, setConnectTimeoutId] = useState(null);
+
+  const didInitRef = useRef(false);
 
   useEffect(() => {
+    if (didInitRef.current) return;
+    didInitRef.current = true;
     initializeVoiceAgent();
   }, []);
 
@@ -90,13 +93,13 @@ const ConversationScreen = ({ userData, onBack }) => {
     setIsStarting(true);
     try {
       // Ensure iOS audio session allows recording and playback in silent mode
-      if (Platform.OS === 'ios') {
+      if (Platform.OS === 'ios' && Audio && typeof Audio.setAudioModeAsync === 'function') {
         try {
           await Audio.setAudioModeAsync({
             allowsRecordingIOS: true,
             playsInSilentModeIOS: true,
             staysActiveInBackground: false,
-            interruptionModeIOS: 1, // do not mix
+            interruptionModeIOS: 1,
           });
         } catch (audioModeErr) {
           console.warn('Failed to set iOS audio mode', audioModeErr);
@@ -150,25 +153,7 @@ const ConversationScreen = ({ userData, onBack }) => {
     }
   };
 
-  // Timeout if stuck in connecting
-  useEffect(() => {
-    if (conversation.status === 'connecting') {
-      const id = setTimeout(async () => {
-        console.warn('Connection timeout reached; ending session');
-        try {
-          await conversation.endSession();
-        } catch (e) {
-          console.warn('Error ending timed-out session', e);
-        }
-        Alert.alert('Connection Issue', 'Unable to connect to voice service. Please try again.');
-      }, 15000);
-      setConnectTimeoutId(id);
-      return () => clearTimeout(id);
-    } else if (connectTimeoutId) {
-      clearTimeout(connectTimeoutId);
-      setConnectTimeoutId(null);
-    }
-  }, [conversation.status]);
+  // Removed auto-timeout to avoid premature disconnects while LiveKit negotiates
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>

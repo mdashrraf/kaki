@@ -49,7 +49,7 @@
     },
     "plugins": [
       "expo-font",
-      "expo-audio",
+      "expo-av",
       "@livekit/react-native-expo-plugin",
       "@config-plugins/react-native-webrtc"
     ],
