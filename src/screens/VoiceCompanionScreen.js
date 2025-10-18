@@ -18,32 +18,43 @@ const ConversationScreen = ({ userData, onBack }) => {
   const conversation = useConversation({
     onConnect: ({ conversationId }) => {
       console.log('✅ Connected to conversation', conversationId);
+      isConnectingRef.current = false;
     },
     onDisconnect: (details) => {
-      console.log('❌ Disconnected from conversation', details);
-      console.log('Disconnect reason:', details.reason);
-      console.log('Disconnect context:', details.context);
+      console.log('❌ Disconnected from conversation', JSON.stringify(details, null, 2));
+      console.log('Disconnect reason:', details?.reason);
+      console.log('Disconnect context:', details?.context);
+      console.log('Full disconnect details:', details);
+      isConnectingRef.current = false;
     },
     onError: (message, context) => {
       console.error('❌ Conversation error:', message, context);
       console.error('Error message details:', message);
-      console.error('Error context:', context);
+      console.error('Error context:', JSON.stringify(context, null, 2));
+      console.error('Error type:', typeof message, typeof context);
+      isConnectingRef.current = false;
     },
     onMessage: ({ message, source }) => {
-      console.log(`💬 Message from ${source}:`, message);
+      console.log(`💬 Message from ${source}:`, JSON.stringify(message, null, 2));
     },
     onModeChange: ({ mode }) => {
-      console.log(`🔊 Mode: ${mode}`);
+      console.log(`🔊 Mode changed to: ${mode}`);
     },
     onStatusChange: ({ status }) => {
-      console.log(`📡 Status: ${status}`);
-      console.log('Status changed to:', status);
+      console.log(`📡 Status changed: ${status}`);
+      if (status === 'connected') {
+        console.log('✅✅✅ CONNECTED TO VOICE AGENT ✅✅✅');
+        isConnectingRef.current = false;
+      } else if (status === 'disconnected') {
+        console.log('⚠️ Status changed to disconnected');
+        isConnectingRef.current = false;
+      }
     },
     onCanSendFeedbackChange: ({ canSendFeedback }) => {
       console.log(`🔊 Can send feedback: ${canSendFeedback}`);
     },
     onDebug: (props) => {
-      console.log('🐛 Debug info:', props);
+      console.log('🐛 Debug:', JSON.stringify(props, null, 2));
     },
   });
 
@@ -51,10 +62,22 @@ const ConversationScreen = ({ userData, onBack }) => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   const didInitRef = useRef(false);
+  const isConnectingRef = useRef(false);
 
   useEffect(() => {
     if (didInitRef.current) return;
     didInitRef.current = true;
+    
+    // Configure iOS audio session ONCE on mount
+    if (Platform.OS === 'ios' && Audio && typeof Audio.setAudioModeAsync === 'function') {
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        interruptionModeIOS: 1,
+      }).catch(err => console.warn('Failed to set iOS audio mode', err));
+    }
+    
     initializeVoiceAgent();
   }, []);
 
@@ -84,46 +107,43 @@ const ConversationScreen = ({ userData, onBack }) => {
   };
 
   const startConversation = async () => {
-    if (isStarting) return;
+    if (isStarting || isConnectingRef.current) {
+      console.log('Already starting/connecting, ignoring duplicate call');
+      return;
+    }
 
     console.log('Starting conversation with agent:', VoiceAgentService.COMPANION_AGENT_ID);
     console.log('Current conversation status:', conversation.status);
     console.log('isInitialized:', isInitialized);
     
     setIsStarting(true);
+    isConnectingRef.current = true;
+    
     try {
-      // Ensure iOS audio session allows recording and playback in silent mode
-      if (Platform.OS === 'ios' && Audio && typeof Audio.setAudioModeAsync === 'function') {
-        try {
-          await Audio.setAudioModeAsync({
-            allowsRecordingIOS: true,
-            playsInSilentModeIOS: true,
-            staysActiveInBackground: false,
-            interruptionModeIOS: 1,
-          });
-        } catch (audioModeErr) {
-          console.warn('Failed to set iOS audio mode', audioModeErr);
-        }
-      }
-
-      // Start session with proper configuration
-      // LiveKit will handle microphone permissions automatically
+      // TEMPORARY: Test with main agent to rule out companion agent config issue
       const sessionConfig = {
-        agentId: VoiceAgentService.COMPANION_AGENT_ID,
+        agentId: VoiceAgentService.AGENT_ID, // Using MAIN agent instead of COMPANION
         dynamicVariables: {
           platform: Platform.OS,
           userName: userData?.name || 'User',
+          testMode: 'true',
         },
       };
       
       console.log('Starting session with config:', sessionConfig);
       await conversation.startSession(sessionConfig);
       console.log('Conversation session started successfully');
+      
+      // Reset connecting flag after connection completes
+      setTimeout(() => {
+        if (conversation.status === 'connected') {
+          isConnectingRef.current = false;
+        }
+      }, 1000);
     } catch (error) {
       console.error('Failed to start conversation:', error);
       console.error('Error details:', error.message, error.stack);
       
-      // Check if it's a permission error
       if (error.message && error.message.includes('permission')) {
         Alert.alert(
           'Microphone Permission Required',
@@ -134,6 +154,8 @@ const ConversationScreen = ({ userData, onBack }) => {
       }
     } finally {
       setIsStarting(false);
+      // Safety timeout to reset connecting flag
+      setTimeout(() => { isConnectingRef.current = false; }, 2000);
     }
   };
 
