@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ElevenLabsProvider, useConversation } from '@elevenlabs/react-native';
 import VoiceAgentService from '../services/VoiceAgentService';
+import { Audio } from 'expo-audio';
 
 const ConversationScreen = ({ userData, onBack }) => {
   const conversation = useConversation({
@@ -20,9 +21,13 @@ const ConversationScreen = ({ userData, onBack }) => {
     },
     onDisconnect: (details) => {
       console.log('❌ Disconnected from conversation', details);
+      console.log('Disconnect reason:', details.reason);
+      console.log('Disconnect context:', details.context);
     },
     onError: (message, context) => {
       console.error('❌ Conversation error:', message, context);
+      console.error('Error message details:', message);
+      console.error('Error context:', context);
     },
     onMessage: ({ message, source }) => {
       console.log(`💬 Message from ${source}:`, message);
@@ -32,14 +37,19 @@ const ConversationScreen = ({ userData, onBack }) => {
     },
     onStatusChange: ({ status }) => {
       console.log(`📡 Status: ${status}`);
+      console.log('Status changed to:', status);
     },
     onCanSendFeedbackChange: ({ canSendFeedback }) => {
       console.log(`🔊 Can send feedback: ${canSendFeedback}`);
+    },
+    onDebug: (props) => {
+      console.log('🐛 Debug info:', props);
     },
   });
 
   const [isStarting, setIsStarting] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [connectTimeoutId, setConnectTimeoutId] = useState(null);
 
   useEffect(() => {
     initializeVoiceAgent();
@@ -53,6 +63,7 @@ const ConversationScreen = ({ userData, onBack }) => {
       const connectionResults = await VoiceAgentService.testConnection();
       if (connectionResults.mainAgent && connectionResults.companionAgent) {
         console.log('ElevenLabs agents connected successfully');
+        console.log('Setting isInitialized to true');
         setIsInitialized(true);
       } else {
         console.log('ElevenLabs connection failed:', connectionResults.error);
@@ -65,24 +76,59 @@ const ConversationScreen = ({ userData, onBack }) => {
     } catch (error) {
       Alert.alert('Error', 'Failed to initialize voice agent');
       console.error('Voice agent initialization error:', error);
+      setIsInitialized(true); // Allow fallback mode
     }
   };
 
   const startConversation = async () => {
     if (isStarting) return;
 
+    console.log('Starting conversation with agent:', VoiceAgentService.COMPANION_AGENT_ID);
+    console.log('Current conversation status:', conversation.status);
+    console.log('isInitialized:', isInitialized);
+    
     setIsStarting(true);
     try {
-      await conversation.startSession({
+      // Ensure iOS audio session allows recording and playback in silent mode
+      if (Platform.OS === 'ios') {
+        try {
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: true,
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: false,
+            interruptionModeIOS: 1, // do not mix
+          });
+        } catch (audioModeErr) {
+          console.warn('Failed to set iOS audio mode', audioModeErr);
+        }
+      }
+
+      // Start session with proper configuration
+      // LiveKit will handle microphone permissions automatically
+      const sessionConfig = {
         agentId: VoiceAgentService.COMPANION_AGENT_ID,
         dynamicVariables: {
           platform: Platform.OS,
           userName: userData?.name || 'User',
         },
-      });
+      };
+      
+      console.log('Starting session with config:', sessionConfig);
+      await conversation.startSession(sessionConfig);
+      console.log('Conversation session started successfully');
     } catch (error) {
       console.error('Failed to start conversation:', error);
-      Alert.alert('Error', 'Failed to start voice conversation. Please try again.');
+      console.error('Error details:', error.message, error.stack);
+      
+      // Check if it's a permission error
+      if (error.message && error.message.includes('permission')) {
+        Alert.alert(
+          'Microphone Permission Required',
+          'Please grant microphone permission in your device settings to use voice conversation.'
+        );
+      } else {
+        Alert.alert('Error', `Failed to start voice conversation: ${error.message}`);
+      }
     } finally {
       setIsStarting(false);
     }
@@ -104,6 +150,26 @@ const ConversationScreen = ({ userData, onBack }) => {
     }
   };
 
+  // Timeout if stuck in connecting
+  useEffect(() => {
+    if (conversation.status === 'connecting') {
+      const id = setTimeout(async () => {
+        console.warn('Connection timeout reached; ending session');
+        try {
+          await conversation.endSession();
+        } catch (e) {
+          console.warn('Error ending timed-out session', e);
+        }
+        Alert.alert('Connection Issue', 'Unable to connect to voice service. Please try again.');
+      }, 15000);
+      setConnectTimeoutId(id);
+      return () => clearTimeout(id);
+    } else if (connectTimeoutId) {
+      clearTimeout(connectTimeoutId);
+      setConnectTimeoutId(null);
+    }
+  }, [conversation.status]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <TouchableOpacity style={styles.backButton} onPress={onBack}>
@@ -123,35 +189,67 @@ const ConversationScreen = ({ userData, onBack }) => {
               Mode: {conversation.mode}
             </Text>
           )}
+          <Text style={styles.debugText}>
+            Initialized: {isInitialized ? 'Yes' : 'No'} | Starting: {isStarting ? 'Yes' : 'No'}
+          </Text>
+          <Text style={styles.debugText}>
+            Agent: {VoiceAgentService.COMPANION_AGENT_ID}
+          </Text>
         </View>
 
         <TouchableOpacity
           style={[
             styles.micButton,
-            conversation.status === 'listening' && styles.micButtonListening,
-            conversation.status === 'speaking' && styles.micButtonSpeaking,
+            conversation.mode === 'listening' && styles.micButtonListening,
+            conversation.mode === 'speaking' && styles.micButtonSpeaking,
+            conversation.status === 'connecting' && styles.micButtonDisabled,
+            (!isInitialized || isStarting) && styles.micButtonDisabled,
           ]}
-          onPress={conversation.status === 'idle' ? startConversation : stopConversation}
-          disabled={isStarting || !isInitialized}
+          onPress={() => {
+            console.log('Button pressed!');
+            console.log('conversation.status:', conversation.status);
+            console.log('isStarting:', isStarting);
+            console.log('isInitialized:', isInitialized);
+            console.log('Button disabled:', isStarting || !isInitialized);
+            
+            if (conversation.status === 'disconnected') {
+              console.log('Starting conversation...');
+              startConversation();
+            } else if (conversation.status === 'connected') {
+              console.log('Stopping conversation...');
+              stopConversation();
+            } else {
+              console.log('Conversation in progress, status:', conversation.status);
+            }
+          }}
+          disabled={isStarting || !isInitialized || conversation.status === 'connecting'}
         >
-          {isStarting ? (
+          {isStarting || conversation.status === 'connecting' ? (
             <ActivityIndicator size="large" color="#FFFFFF" />
-          ) : conversation.status === 'listening' ? (
+          ) : conversation.mode === 'listening' ? (
             <Ionicons name="mic" size={48} color="#FFFFFF" />
-          ) : conversation.status === 'speaking' ? (
+          ) : conversation.mode === 'speaking' ? (
             <Ionicons name="volume-high" size={48} color="#FFFFFF" />
+          ) : conversation.status === 'connected' ? (
+            <Ionicons name="stop" size={48} color="#FFFFFF" />
           ) : (
             <Ionicons name="play" size={48} color="#FFFFFF" />
           )}
         </TouchableOpacity>
 
         <Text style={styles.instructions}>
-          {isStarting
+          {!isInitialized
+            ? 'Initializing voice service...'
+            : isStarting || conversation.status === 'connecting'
             ? 'Starting conversation...'
-            : conversation.status === 'listening'
+            : conversation.mode === 'listening'
             ? 'Listening... Speak now'
-            : conversation.status === 'speaking'
+            : conversation.mode === 'speaking'
             ? 'Kaki is speaking...'
+            : conversation.status === 'connected'
+            ? 'Connected! Tap to stop conversation'
+            : conversation.status === 'disconnected'
+            ? 'Tap to start voice conversation'
             : 'Tap to start voice conversation'}
         </Text>
 
@@ -177,6 +275,9 @@ const ConversationScreen = ({ userData, onBack }) => {
 };
 
 const VoiceCompanionScreen = ({ userData, onBack }) => {
+  // Debug the API key being passed
+  console.log('ElevenLabsProvider API Key:', VoiceAgentService.API_KEY ? `${VoiceAgentService.API_KEY.substring(0, 10)}...` : 'NOT SET');
+  
   return (
     <ElevenLabsProvider apiKey={VoiceAgentService.API_KEY}>
       <ConversationScreen userData={userData} onBack={onBack} />
@@ -231,6 +332,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  debugText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
   micButton: {
     width: 120,
     height: 120,
@@ -252,6 +358,10 @@ const styles = StyleSheet.create({
   micButtonSpeaking: {
     backgroundColor: '#34C759',
     transform: [{ scale: 1.05 }],
+  },
+  micButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+    opacity: 0.6,
   },
   instructions: {
     fontSize: 16,

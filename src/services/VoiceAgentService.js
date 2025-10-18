@@ -239,8 +239,9 @@ export class VoiceAgentService {
         const response = await fetch(`${this.ELEVENLABS_BASE_URL}/text-to-speech/21m00Tcm4TlvDq8ikWAM`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${this.API_KEY}`,
+            'Accept': 'audio/mpeg',
             'Content-Type': 'application/json',
+            'xi-api-key': this.API_KEY,
           },
           body: JSON.stringify({
             text: 'Test',

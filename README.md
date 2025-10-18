@@ -46,7 +46,6 @@ A React Native Expo app with ElevenLabs AI voice integration for daily task assi
 - **React Native Expo** with new architecture
 - **ElevenLabs React Native SDK** for voice AI
 - **Supabase** for backend services
-- **LiveKit** for WebRTC voice communication
 - **React Native Safe Area Context** for device compatibility
 
 ## 📁 Project Structure

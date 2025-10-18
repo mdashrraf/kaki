@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  PermissionsAndroid,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ElevenLabsProvider, useConversation } from '@elevenlabs/react-native';
+import { Audio } from 'expo-audio';
 import VoiceAgentService from '../services/VoiceAgentService';
 
 const { width, height } = Dimensions.get('window');
@@ -26,6 +29,88 @@ const cardSize = (width - horizontalPadding - cardSpacing) / 2;
 const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoicePress, onCompanionPress }) => {
   const userName = userData?.name || 'User';
   const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
+  
+  useEffect(() => {
+    requestPermissions();
+  }, []);
+
+  const requestPermissions = async () => {
+    try {
+      console.log('🔐 Requesting permissions...');
+      
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+        ]);
+
+        const micGranted = granted['android.permission.RECORD_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED;
+        const locationGranted = 
+          granted['android.permission.ACCESS_FINE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED ||
+          granted['android.permission.ACCESS_COARSE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED;
+
+        console.log('📱 Android permissions:', { micGranted, locationGranted });
+        
+        if (!micGranted) {
+          Alert.alert(
+            'Microphone Permission Required',
+            'Kaki needs microphone permission to provide voice assistance. Please grant this permission in Settings.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() }
+            ]
+          );
+        } else {
+          setPermissionsGranted(true);
+        }
+        
+        if (!locationGranted) {
+          console.log('⚠️ Location permission not granted, but app will continue');
+        }
+      } else {
+        console.log('📱 iOS: Requesting microphone permission...');
+        
+        try {
+          let granted = true;
+          if (Audio && typeof Audio.requestRecordingPermissionsAsync === 'function') {
+            const result = await Audio.requestRecordingPermissionsAsync();
+            granted = !!result?.granted;
+            console.log('Audio permission result:', granted);
+          } else if (Audio && typeof Audio.requestPermissionsAsync === 'function') {
+            const result = await Audio.requestPermissionsAsync();
+            granted = !!result?.granted;
+            console.log('Audio permission result (fallback):', granted);
+          } else {
+            console.log('Audio permission API not available; proceeding without explicit request');
+            granted = true;
+          }
+          
+          if (granted) {
+            console.log('✅ Microphone permission granted');
+            setPermissionsGranted(true);
+          } else {
+            console.log('❌ Microphone permission denied');
+            Alert.alert(
+              'Microphone Permission Required',
+              'Kaki needs microphone permission to provide voice assistance. Please grant this permission in Settings.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Open Settings', onPress: () => Linking.openSettings() }
+              ]
+            );
+          }
+        } catch (audioError) {
+          console.error('❌ Audio permission error:', audioError);
+          setPermissionsGranted(true);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Permission request error:', error);
+      setPermissionsGranted(true);
+    }
+  };
   
   // ElevenLabs conversation hook
   const conversation = useConversation({

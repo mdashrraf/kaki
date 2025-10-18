@@ -8,17 +8,34 @@
     "ios": "expo run:ios",
     "web": "expo start --web"
   },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "@livekit/react-native",
+          "@livekit/react-native-webrtc",
+          "@livekit/react-native-expo-plugin"
+        ],
+        "listUnknownPackages": false
+      }
+    }
+  },
   "dependencies": {
     "@config-plugins/react-native-webrtc": "^13.0.0",
     "@elevenlabs/react-native": "^0.4.3",
     "@expo/vector-icons": "^15.0.2",
     "@figma/rest-api-spec": "^0.34.0",
+    "@livekit/react-native": "^2.9.3",
+    "@livekit/react-native-expo-plugin": "^1.0.1",
+    "@livekit/react-native-webrtc": "^137.0.2",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/native": "^7.1.18",
     "@react-navigation/stack": "^7.4.10",
     "@supabase/supabase-js": "^2.75.1",
     "axios": "^1.12.2",
     "babel-preset-expo": "^54.0.4",
+    "es-abstract": "^1.24.0",
+    "es-object-atoms": "^1.1.1",
     "expo": "~54.0.13",
     "expo-audio": "~1.0.13",
     "expo-dev-client": "~6.0.15",
@@ -27,6 +44,7 @@
     "expo-speech": "^14.0.7",
     "expo-status-bar": "~3.0.8",
     "figma-api": "^2.1.0-beta",
+    "livekit-client": "^2.15.11",
     "metro-react-native-babel-transformer": "^0.77.0",
     "react": "19.1.0",
     "react-native": "0.81.4",
