@@ -12,8 +12,16 @@ export class UserService {
    */
   static async createUser({ name, phoneNumber, countryCode = '+65' }) {
     try {
-      // Check if user already exists
-      const existingUser = await this.getUserByPhone(phoneNumber);
+      // Clean phone number (remove all non-digit characters)
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      
+      // Validate cleaned phone number
+      if (!this.validatePhoneNumber(cleanPhoneNumber)) {
+        throw new Error('Invalid phone number format');
+      }
+      
+      // Check if user already exists using cleaned phone number
+      const existingUser = await this.getUserByPhone(cleanPhoneNumber);
       
       if (existingUser) {
         // Update existing user's name if it's different
@@ -29,9 +37,6 @@ export class UserService {
         return existingUser;
       }
 
-      // Clean phone number (remove all non-digit characters)
-      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
-      
       // Create new user
       const { data, error } = await supabase
         .from('users')

@@ -6,12 +6,13 @@ import {
   StyleSheet,
   SafeAreaView,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
-const KakiHomeScreen = ({ userData, onSettingsPress, onActionPress, onVoicePress }) => {
+const KakiHomeScreen = ({ userData, onSettingsPress, onActionPress, onVoicePress, onCompanionPress }) => {
   const userName = userData?.name || 'User';
 
   const actionCards = [
@@ -61,7 +62,12 @@ const KakiHomeScreen = ({ userData, onSettingsPress, onActionPress, onVoicePress
 
   const handleActionPress = (actionId) => {
     console.log(`Action pressed: ${actionId}`);
-    if (onActionPress) {
+    
+    if (actionId === 'companion') {
+      if (onCompanionPress) {
+        onCompanionPress();
+      }
+    } else if (onActionPress) {
       onActionPress(actionId);
     }
   };
@@ -94,7 +100,11 @@ const KakiHomeScreen = ({ userData, onSettingsPress, onActionPress, onVoicePress
       </View>
 
       {/* Action Cards Grid */}
-      <View style={styles.cardsContainer}>
+      <ScrollView 
+        style={styles.cardsContainer}
+        contentContainerStyle={styles.cardsContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.cardsGrid}>
           {actionCards.map((card, index) => (
             <TouchableOpacity
@@ -103,13 +113,13 @@ const KakiHomeScreen = ({ userData, onSettingsPress, onActionPress, onVoicePress
               onPress={() => handleActionPress(card.id)}
             >
               <View style={[styles.iconContainer, { backgroundColor: card.color }]}>
-                <Ionicons name={card.icon} size={24} color="#FFFFFF" />
+                <Ionicons name={card.icon} size={20} color="#FFFFFF" />
               </View>
               <Text style={styles.cardTitle}>{card.title}</Text>
             </TouchableOpacity>
           ))}
         </View>
-      </View>
+      </ScrollView>
 
       {/* Voice Command Section */}
       <View style={styles.voiceSection}>
@@ -157,18 +167,21 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
+  cardsContent: {
+    paddingBottom: 20, // Add bottom padding to prevent overlap
+  },
   cardsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
   actionCard: {
-    width: (width - 60) / 2, // Account for padding and gap
+    width: (width - 60) / 2 * 0.8, // Reduce by 20% (0.8)
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
+    padding: 16, // Reduced from 20
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12, // Reduced from 16
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -179,23 +192,25 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 38, // Reduced by 20% (48 * 0.8)
+    height: 38, // Reduced by 20% (48 * 0.8)
+    borderRadius: 10, // Reduced proportionally
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10, // Reduced from 12
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: 12, // Reduced from 14
     fontWeight: '500',
     color: '#000000',
     textAlign: 'center',
   },
   voiceSection: {
     paddingHorizontal: 20,
+    paddingTop: 20, // Add top padding
     paddingBottom: 30,
     alignItems: 'center',
+    backgroundColor: '#F8F8F8', // Match container background
   },
   voiceButton: {
     backgroundColor: '#FF6B35',

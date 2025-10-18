@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import UserService from '../services/UserService';
@@ -20,15 +21,31 @@ const OnboardingScreen = ({ onComplete }) => {
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const phoneInputRef = useRef(null);
 
   const handleContinue = async () => {
+    // Trim inputs
+    const trimmedName = name.trim();
+    const trimmedPhone = phoneNumber.trim();
+    
+    // Check for empty inputs
+    if (!trimmedName) {
+      Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+    
+    if (!trimmedPhone) {
+      Alert.alert('Error', 'Please enter your phone number');
+      return;
+    }
+    
     // Validation using UserService
-    if (!UserService.validateName(name)) {
+    if (!UserService.validateName(trimmedName)) {
       Alert.alert('Error', 'Please enter a valid name (at least 2 characters, letters only)');
       return;
     }
 
-    if (!UserService.validatePhoneNumber(phoneNumber)) {
+    if (!UserService.validatePhoneNumber(trimmedPhone)) {
       Alert.alert('Error', 'Please enter a valid phone number (exactly 8 digits)');
       return;
     }
@@ -44,8 +61,8 @@ const OnboardingScreen = ({ onComplete }) => {
       
       // Save to Supabase
       const userData = await UserService.createUser({
-        name: name.trim(),
-        phoneNumber: phoneNumber.trim(),
+        name: trimmedName,
+        phoneNumber: trimmedPhone,
         countryCode: '+65'
       });
       
@@ -54,12 +71,8 @@ const OnboardingScreen = ({ onComplete }) => {
       // Save user session for persistence
       await UserSessionService.createUserSession(userData);
       
-      Alert.alert('Success', 'Welcome to Kaki!', [
-        {
-          text: 'OK',
-          onPress: () => onComplete(userData)
-        }
-      ]);
+      // Navigate directly to home screen without popup
+      onComplete(userData);
       
     } catch (error) {
       console.error('Error creating user:', error);
@@ -84,7 +97,14 @@ const OnboardingScreen = ({ onComplete }) => {
       <KeyboardAvoidingView 
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         {/* Header Section */}
         <View style={styles.headerSection}>
           <Image
@@ -109,6 +129,9 @@ const OnboardingScreen = ({ onComplete }) => {
               placeholderTextColor="#999999"
               autoCapitalize="words"
               returnKeyType="next"
+              onSubmitEditing={() => {
+                phoneInputRef.current?.focus();
+              }}
             />
           </View>
 
@@ -120,14 +143,22 @@ const OnboardingScreen = ({ onComplete }) => {
                 <Text style={styles.countryCode}>+65</Text>
               </View>
               <TextInput
+                ref={phoneInputRef}
                 style={styles.phoneInput}
                 value={phoneNumber}
-                onChangeText={setPhoneNumber}
+                onChangeText={(text) => {
+                  // Limit to 8 digits only
+                  const cleanText = text.replace(/\D/g, '');
+                  if (cleanText.length <= 8) {
+                    setPhoneNumber(cleanText);
+                  }
+                }}
                 placeholder="Enter phone number"
                 placeholderTextColor="#999999"
                 keyboardType="phone-pad"
                 returnKeyType="done"
                 onSubmitEditing={handleContinue}
+                maxLength={8}
               />
             </View>
           </View>
@@ -148,6 +179,7 @@ const OnboardingScreen = ({ onComplete }) => {
         <Text style={styles.privacyText}>
           We'll never share your information with anyone else.
         </Text>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -160,6 +192,12 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 20,
   },
   headerSection: {
