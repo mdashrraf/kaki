@@ -21,7 +21,7 @@ const StartScreen = ({ onGetStarted }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Top Section - Icon and Branding */}
       <View style={styles.topSection}>
         <Image
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   },
   topSection: {
     alignItems: 'center',
-    paddingTop: 20,
+    paddingTop: 60,
     paddingHorizontal: 20,
   },
   appIcon: {

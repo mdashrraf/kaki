@@ -170,7 +170,7 @@ const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoi
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header Section */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -258,8 +258,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20, // Reduced from 30
+    paddingTop: 40,
+    paddingBottom: 20,
   },
   headerLeft: {
     flex: 1,
