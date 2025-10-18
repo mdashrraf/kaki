@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 5.9.0"
+    "version": ">= 16.0.0"
   },
   "build": {
     "development": {
@@ -11,14 +11,6 @@
       },
       "android": {
         "resourceClass": "medium"
-      },
-      "env": {
-        "APP_ENVIRONMENT": "development",
-        "SUPABASE_URL": "https://dnwzlsgpiztwyrajnnms.supabase.co",
-        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRud3psc2dwaXp0d3lyYWpubm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NTkyODMsImV4cCI6MjA3NjMzNTI4M30._BrzC9zqMjhR-ChpneJ7inxMUkxioVHwXh771s92RJg",
-        "ELEVENLABS_API_KEY": "sk_d36b1447eff28551002fb3d641123db1ebcc0f2f6ccba9a0",
-        "ELEVENLABS_AGENT_ID": "agent_9601k7v1dtekej68p3x13zv4erse",
-        "ELEVENLABS_BASE_URL": "https://api.elevenlabs.io/v1"
       }
     },
     "preview": {
@@ -28,14 +20,6 @@
       },
       "android": {
         "resourceClass": "medium"
-      },
-      "env": {
-        "APP_ENVIRONMENT": "preview",
-        "SUPABASE_URL": "https://dnwzlsgpiztwyrajnnms.supabase.co",
-        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRud3psc2dwaXp0d3lyYWpubm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NTkyODMsImV4cCI6MjA3NjMzNTI4M30._BrzC9zqMjhR-ChpneJ7inxMUkxioVHwXh771s92RJg",
-        "ELEVENLABS_API_KEY": "sk_d36b1447eff28551002fb3d641123db1ebcc0f2f6ccba9a0",
-        "ELEVENLABS_AGENT_ID": "agent_9601k7v1dtekej68p3x13zv4erse",
-        "ELEVENLABS_BASE_URL": "https://api.elevenlabs.io/v1"
       }
     },
     "production": {
@@ -44,28 +28,10 @@
       },
       "android": {
         "resourceClass": "medium"
-      },
-      "env": {
-        "APP_ENVIRONMENT": "production",
-        "SUPABASE_URL": "https://dnwzlsgpiztwyrajnnms.supabase.co",
-        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRud3psc2dwaXp0d3lyYWpubm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NTkyODMsImV4cCI6MjA3NjMzNTI4M30._BrzC9zqMjhR-ChpneJ7inxMUkxioVHwXh771s92RJg",
-        "ELEVENLABS_API_KEY": "sk_d36b1447eff28551002fb3d641123db1ebcc0f2f6ccba9a0",
-        "ELEVENLABS_AGENT_ID": "agent_9601k7v1dtekej68p3x13zv4erse",
-        "ELEVENLABS_BASE_URL": "https://api.elevenlabs.io/v1"
       }
     }
   },
   "submit": {
-    "production": {
-      "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "your-apple-team-id"
-      },
-      "android": {
-        "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "production"
-      }
-    }
+    "production": {}
   }
 }

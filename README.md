@@ -1,129 +1,133 @@
-# Figma to React Native Expo Import Guide
+# Kaki - Voice-Enabled Companion App
 
-This project is set up to easily import and convert Figma designs into React Native components.
+A React Native Expo app with ElevenLabs AI voice integration for daily task assistance.
 
 ## 🚀 Quick Start
 
-1. **Run the app:**
+1. **Install dependencies:**
    ```bash
-   npm start
+   npm install
    ```
 
-2. **Open on device:**
-   - Install Expo Go app on your phone
-   - Scan the QR code from the terminal
-
-## 📱 Importing Figma Designs
-
-### Method 1: Manual Export (Recommended for one-time imports)
-
-1. **Export assets from Figma:**
-   - Select your component/design in Figma
-   - Right-click → "Export" or use Export panel
-   - Choose format: SVG for icons, PNG/JPG for images
-   - Export at 2x or 3x resolution for better quality
-
-2. **Save assets:**
-   - Icons: Save to `src/assets/icons/`
-   - Images: Save to `src/assets/images/`
-
-3. **Create React Native component:**
-   ```jsx
-   import React from 'react';
-   import { View, Text, StyleSheet } from 'react-native';
-   import { SvgXml } from 'react-native-svg';
-   
-   // Import your SVG
-   import iconSvg from '../assets/icons/my-icon.svg';
-   
-   const MyComponent = () => {
-     return (
-       <View style={styles.container}>
-         <SvgXml xml={iconSvg} width="24" height="24" />
-         <Text style={styles.text}>My Component</Text>
-       </View>
-     );
-   };
+2. **Set up environment variables:**
+   ```bash
+   cp .env.example .env
+   # Add your API keys to .env
    ```
 
-### Method 2: Using Figma Tokens (For design systems)
-
-1. **Install Figma Tokens plugin:**
-   - Install "Figma Tokens" plugin in Figma
-   - Define your design tokens (colors, spacing, typography)
-
-2. **Export tokens:**
-   - Export as JSON format
-   - Save to `src/design-tokens/`
-
-3. **Use tokens in components:**
-   ```jsx
-   import { generateStyleProps } from '../utils/figmaUtils';
-   
-   const styles = StyleSheet.create({
-     container: generateStyleProps({
-       backgroundColor: '#ffffff',
-       borderRadius: 8,
-       padding: 16,
-     }),
-   });
+3. **Run the app:**
+   ```bash
+   npx expo start --tunnel
    ```
+
+4. **Run on device:**
+   ```bash
+   npx expo run:ios --device
+   # or
+   npx expo run:android --device
+   ```
+
+## 🎤 Voice Features
+
+- **Real-time voice conversations** with ElevenLabs AI agents
+- **Voice command navigation** to different app sections
+- **Intelligent task routing** based on voice input
+- **Companion mode** for general conversations
+
+## 📱 App Features
+
+- **Onboarding**: Name and phone number collection
+- **Home Screen**: Action cards and voice command button
+- **Service Screens**: Ride booking, food ordering, grocery shopping, bill payments
+- **Voice Companion**: Dedicated AI conversation screen
+
+## 🛠️ Tech Stack
+
+- **React Native Expo** with new architecture
+- **ElevenLabs React Native SDK** for voice AI
+- **Supabase** for backend services
+- **LiveKit** for WebRTC voice communication
+- **React Native Safe Area Context** for device compatibility
 
 ## 📁 Project Structure
 
 ```
 src/
-├── components/          # React Native components
-│   └── SampleComponent.js
-├── assets/
-│   ├── icons/          # SVG icons from Figma
-│   └── images/         # PNG/JPG images from Figma
-├── screens/            # App screens
-├── utils/
-│   └── figmaUtils.js   # Helper functions for Figma conversion
-└── design-tokens/      # Design system tokens (optional)
+├── screens/              # App screens
+│   ├── StartScreen.js
+│   ├── OnboardingScreen.js
+│   ├── KakiHomeScreen.js
+│   ├── VoiceCompanionScreen.js
+│   └── service-screens/
+├── services/             # Business logic
+│   ├── VoiceAgentService.js
+│   ├── UserService.js
+│   └── UserSessionService.js
+├── components/           # Reusable components
+├── config/              # Configuration files
+└── utils/               # Helper functions
 ```
 
-## 🛠️ Available Tools
+## 🔧 Configuration
 
-- **SVG Support**: Configured with `react-native-svg-transformer`
-- **Vector Icons**: `@expo/vector-icons` for additional icons
-- **Safe Areas**: `react-native-safe-area-context` for device compatibility
-- **Screens**: `react-native-screens` for navigation
+### Environment Variables
 
-## 📝 Best Practices
+```bash
+# Supabase
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
 
-1. **Naming Convention:**
-   - Use PascalCase for components: `MyButton.js`
-   - Use camelCase for files: `myIcon.svg`
+# ElevenLabs
+ELEVENLABS_API_KEY=your_elevenlabs_api_key
+ELEVENLABS_AGENT_ID=your_agent_id
+ELEVENLABS_BASE_URL=https://api.elevenlabs.io/v1
+```
 
-2. **Component Structure:**
-   - Keep components small and focused
-   - Use props for customization
-   - Follow React Native styling patterns
+### ElevenLabs Agents
 
-3. **Asset Optimization:**
-   - Use SVG for icons (scalable)
-   - Use PNG for complex images
-   - Export at appropriate resolutions (2x, 3x)
+- **Main Agent**: `agent_9601k7v1dtekej68p3x13zv4erse` (service requests)
+- **Companion Agent**: `agent_8601k7tybe14e16tf75gmjdede86` (general chat)
 
-4. **Performance:**
-   - Lazy load heavy components
-   - Optimize images before importing
-   - Use StyleSheet.create() for styles
+## 📝 Development
 
-## 🔧 Troubleshooting
+### Prerequisites
 
-- **SVG not loading**: Check metro.config.js configuration
-- **Styling issues**: Verify StyleSheet syntax
-- **Build errors**: Clear Metro cache with `npx expo start --clear`
+- Node.js v18 or higher
+- Expo CLI
+- iOS Simulator or Android Emulator
+- Physical device for voice testing
 
-## 📚 Next Steps
+### Voice Development
 
-1. Import your Figma designs using the methods above
-2. Create reusable components
-3. Set up navigation if needed
-4. Add state management (Redux, Context, etc.)
-5. Implement your app logic
+The app uses the official ElevenLabs React Native SDK with WebRTC support:
+
+```javascript
+import { ElevenLabsProvider, useConversation } from '@elevenlabs/react-native';
+
+const conversation = useConversation({
+  onConnect: ({ conversationId }) => console.log('Connected'),
+  onMessage: ({ message, source }) => console.log('Message:', message),
+  // ... other handlers
+});
+```
+
+## 🚀 Deployment
+
+1. **Prebuild for native dependencies:**
+   ```bash
+   npx expo prebuild --clean
+   ```
+
+2. **Build for production:**
+   ```bash
+   npx expo build:ios
+   npx expo build:android
+   ```
+
+## 📚 Documentation
+
+- [ElevenLabs React Native SDK](https://elevenlabs.io/docs/cookbooks/agents-platform/expo-react-native)
+- [Expo Documentation](https://docs.expo.dev/)
+- [React Native Documentation](https://reactnative.dev/)
 
 Happy coding! 🎉

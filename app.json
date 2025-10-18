@@ -15,10 +15,12 @@
     },
     "ios": {
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "This app uses the microphone to record audio for voice interactions."
+        "NSMicrophoneUsageDescription": "This app uses the microphone to record audio for voice interactions.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "supportsTablet": true,
-      "bundleIdentifier": "com.kaki.app"
+      "bundleIdentifier": "com.kaki.voiceapp",
+      "bitcode": false
     },
     "android": {
       "permissions": [
@@ -36,7 +38,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.kaki.app"
+      "package": "com.kaki.voiceapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -46,6 +48,11 @@
       "expo-audio",
       "@livekit/react-native-expo-plugin",
       "@config-plugins/react-native-webrtc"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f5b0b0f3-e85b-4365-a1e3-8392306ccc54"
+      }
+    }
   }
 }
