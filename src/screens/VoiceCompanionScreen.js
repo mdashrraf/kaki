@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 50,
+    top: 80, // Increased from 50 for proper spacing from status bar
     left: 20,
     zIndex: 10,
     padding: 10,

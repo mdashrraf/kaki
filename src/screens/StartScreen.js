@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   },
   topSection: {
     alignItems: 'center',
-    paddingTop: 60,
+    paddingTop: 80, // Increased from 60 for proper spacing from status bar
     paddingHorizontal: 20,
   },
   appIcon: {

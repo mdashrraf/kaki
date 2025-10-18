@@ -17,7 +17,11 @@ import VoiceAgentService from '../services/VoiceAgentService';
 
 const { width, height } = Dimensions.get('window');
 const isSmallScreen = height < 700;
-const cardSize = isSmallScreen ? (width - 60) / 2 * 0.7 : (width - 60) / 2 * 0.8;
+
+// Calculate responsive card size based on screen width and padding
+const horizontalPadding = 40; // 20px padding on each side
+const cardSpacing = 20; // Space between cards
+const cardSize = (width - horizontalPadding - cardSpacing) / 2;
 
 const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoicePress, onCompanionPress }) => {
   const userName = userData?.name || 'User';
@@ -194,8 +198,7 @@ const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoi
               key={card.id}
               style={[
                 styles.actionCard,
-                { width: cardSize },
-                index === actionCards.length - 1 && styles.lastCard
+                { width: cardSize }
               ]}
               onPress={() => handleActionPress(card.id)}
             >
@@ -253,14 +256,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F8F8',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    paddingBottom: 20,
-  },
+      header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        paddingHorizontal: 20,
+        paddingTop: isSmallScreen ? 70 : 80, // Responsive top padding for proper spacing
+        paddingBottom: 20,
+      },
   headerLeft: {
     flex: 1,
   },
@@ -288,8 +291,9 @@ const styles = StyleSheet.create({
   cardsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'flex-start',
+    gap: 20, // Consistent spacing between cards
   },
   actionCard: {
     backgroundColor: '#FFFFFF',
@@ -305,10 +309,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05, // Reduced shadow opacity
     shadowRadius: 2, // Reduced shadow radius
     elevation: 2, // Reduced elevation
-  },
-  lastCard: {
-    // Center the last card (Companion) if it's alone
-    alignSelf: 'center',
   },
   iconContainer: {
     width: isSmallScreen ? 32 : 38, // Responsive icon container

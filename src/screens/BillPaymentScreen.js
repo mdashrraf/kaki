@@ -242,7 +242,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 80, // Added proper spacing from status bar
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },

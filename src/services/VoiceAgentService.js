@@ -253,6 +253,11 @@ export class VoiceAgentService {
           results.companionAgent = true; // Same API key works for both
         } else {
           const errorText = await response.text();
+          console.log('ElevenLabs API Error Details:', {
+            status: response.status,
+            errorText: errorText
+          });
+          
           if (response.status === 403) {
             results.error = 'API key does not have permission to access ElevenLabs features';
           } else if (response.status === 401) {
@@ -262,7 +267,7 @@ export class VoiceAgentService {
             } else if (errorText.includes('missing_permissions')) {
               results.error = 'API key has limited permissions. Please check your ElevenLabs account settings.';
             } else {
-              results.error = 'Invalid API key';
+              results.error = `Invalid API key - ${errorText}`;
             }
           } else if (response.status === 429) {
             results.error = 'Rate limit exceeded';

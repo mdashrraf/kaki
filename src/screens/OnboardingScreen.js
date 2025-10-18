@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     alignItems: 'center',
-    paddingTop: 60,
+    paddingTop: 80, // Increased from 60 for proper spacing from status bar
     paddingBottom: 40,
   },
   appIcon: {
