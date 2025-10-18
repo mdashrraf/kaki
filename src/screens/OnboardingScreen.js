@@ -5,13 +5,13 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Alert,
   KeyboardAvoidingView,
   Platform,
   Image,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import UserService from '../services/UserService';
 import UserSessionService from '../services/UserSessionService';

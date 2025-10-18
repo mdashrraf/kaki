@@ -4,10 +4,10 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 const FoodOrderingScreen = ({ onBack }) => {
@@ -27,145 +27,112 @@ const FoodOrderingScreen = ({ onBack }) => {
       id: 2,
       name: 'Pizza Hut',
       cuisine: 'Italian',
-      rating: 4.3,
+      rating: 4.2,
       deliveryTime: '25-35 min',
       icon: 'pizza',
     },
     {
       id: 3,
-      name: 'KFC',
-      cuisine: 'Chicken',
-      rating: 4.2,
-      deliveryTime: '15-25 min',
-      icon: 'restaurant',
-    },
-    {
-      id: 4,
       name: 'Subway',
       cuisine: 'Sandwiches',
-      rating: 4.4,
-      deliveryTime: '10-20 min',
-      icon: 'fast-food',
+      rating: 4.0,
+      deliveryTime: '15-25 min',
+      icon: 'subway',
     },
   ];
 
-  const handleSelectRestaurant = (restaurant) => {
+  const handleRestaurantSelect = (restaurant) => {
     setSelectedRestaurant(restaurant);
   };
 
-  const handleOrderFood = () => {
-    if (!selectedRestaurant) {
-      Alert.alert('Error', 'Please select a restaurant first');
+  const handleAddToCart = (item) => {
+    setCart([...cart, item]);
+    Alert.alert('Added to Cart', `${item.name} has been added to your cart!`);
+  };
+
+  const handleCheckout = () => {
+    if (cart.length === 0) {
+      Alert.alert('Empty Cart', 'Please add some items to your cart first.');
       return;
     }
-
-    Alert.alert(
-      'Order Placed!',
-      `Your order from ${selectedRestaurant.name} has been placed. Estimated delivery time: ${selectedRestaurant.deliveryTime}`,
-      [
-        {
-          text: 'OK',
-          onPress: () => onBack(),
-        },
-      ]
-    );
+    Alert.alert('Order Placed', 'Your order has been placed successfully!');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Ionicons name="arrow-back" size={24} color="#000000" />
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order Food</Text>
+        <Text style={styles.title}>Order Food</Text>
         <View style={styles.placeholder} />
       </View>
 
-      {/* Content */}
       <ScrollView style={styles.content}>
-        <Text style={styles.sectionTitle}>Choose Restaurant</Text>
+        <Text style={styles.sectionTitle}>Popular Restaurants</Text>
         
         {restaurants.map((restaurant) => (
           <TouchableOpacity
             key={restaurant.id}
             style={[
               styles.restaurantCard,
-              selectedRestaurant?.id === restaurant.id && styles.restaurantCardSelected,
+              selectedRestaurant?.id === restaurant.id && styles.selectedCard
             ]}
-            onPress={() => handleSelectRestaurant(restaurant)}
+            onPress={() => handleRestaurantSelect(restaurant)}
           >
             <View style={styles.restaurantInfo}>
-              <View style={styles.restaurantHeader}>
-                <Ionicons
-                  name={restaurant.icon}
-                  size={24}
-                  color={selectedRestaurant?.id === restaurant.id ? '#FFFFFF' : '#FF6B35'}
-                />
-                <View style={styles.restaurantDetails}>
-                  <Text
-                    style={[
-                      styles.restaurantName,
-                      selectedRestaurant?.id === restaurant.id && styles.restaurantNameSelected,
-                    ]}
-                  >
-                    {restaurant.name}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.restaurantCuisine,
-                      selectedRestaurant?.id === restaurant.id && styles.restaurantCuisineSelected,
-                    ]}
-                  >
-                    {restaurant.cuisine}
-                  </Text>
-                </View>
-              </View>
-              
-              <View style={styles.restaurantMeta}>
-                <View style={styles.ratingContainer}>
-                  <Ionicons name="star" size={16} color="#FFD700" />
-                  <Text
-                    style={[
-                      styles.rating,
-                      selectedRestaurant?.id === restaurant.id && styles.ratingSelected,
-                    ]}
-                  >
-                    {restaurant.rating}
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    styles.deliveryTime,
-                    selectedRestaurant?.id === restaurant.id && styles.deliveryTimeSelected,
-                  ]}
-                >
-                  {restaurant.deliveryTime}
-                </Text>
+              <Ionicons name={restaurant.icon} size={24} color="#FF6B35" />
+              <View style={styles.restaurantDetails}>
+                <Text style={styles.restaurantName}>{restaurant.name}</Text>
+                <Text style={styles.restaurantCuisine}>{restaurant.cuisine}</Text>
+                <Text style={styles.restaurantRating}>⭐ {restaurant.rating} • {restaurant.deliveryTime}</Text>
               </View>
             </View>
-            
-            {selectedRestaurant?.id === restaurant.id && (
-              <View style={styles.selectedIndicator}>
-                <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
-              </View>
-            )}
           </TouchableOpacity>
         ))}
-      </ScrollView>
 
-      {/* Order Button */}
-      <View style={styles.bottomSection}>
-        <TouchableOpacity
-          style={[styles.orderButton, !selectedRestaurant && styles.orderButtonDisabled]}
-          onPress={handleOrderFood}
-          disabled={!selectedRestaurant}
-        >
-          <Text style={styles.orderButtonText}>
-            {selectedRestaurant ? `Order from ${selectedRestaurant.name}` : 'Select Restaurant'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        {selectedRestaurant && (
+          <View style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>Menu Items</Text>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleAddToCart({ name: 'Burger', price: 8.99 })}
+            >
+              <Text style={styles.menuItemName}>Burger</Text>
+              <Text style={styles.menuItemPrice}>$8.99</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleAddToCart({ name: 'Fries', price: 3.99 })}
+            >
+              <Text style={styles.menuItemName}>Fries</Text>
+              <Text style={styles.menuItemPrice}>$3.99</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleAddToCart({ name: 'Drink', price: 2.99 })}
+            >
+              <Text style={styles.menuItemName}>Drink</Text>
+              <Text style={styles.menuItemPrice}>$2.99</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {cart.length > 0 && (
+          <View style={styles.cartSection}>
+            <Text style={styles.sectionTitle}>Cart ({cart.length} items)</Text>
+            {cart.map((item, index) => (
+              <View key={index} style={styles.cartItem}>
+                <Text style={styles.cartItemName}>{item.name}</Text>
+                <Text style={styles.cartItemPrice}>${item.price}</Text>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
+              <Text style={styles.checkoutButtonText}>Checkout</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -177,125 +144,128 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 15,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#E5E5E5',
   },
   backButton: {
-    padding: 8,
+    padding: 5,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000000',
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
   },
   placeholder: {
-    width: 40,
+    width: 34,
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingVertical: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#000000',
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
     marginBottom: 15,
   },
   restaurantCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 15,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  restaurantCardSelected: {
-    backgroundColor: '#FF6B35',
+  selectedCard: {
+    borderWidth: 2,
     borderColor: '#FF6B35',
   },
   restaurantInfo: {
-    flex: 1,
-  },
-  restaurantHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
   },
   restaurantDetails: {
-    marginLeft: 12,
+    marginLeft: 15,
     flex: 1,
   },
   restaurantName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  restaurantNameSelected: {
-    color: '#FFFFFF',
+    fontWeight: 'bold',
+    color: '#333',
   },
   restaurantCuisine: {
     fontSize: 14,
-    color: '#666666',
+    color: '#666',
     marginTop: 2,
   },
-  restaurantCuisineSelected: {
-    color: '#FFFFFF',
+  restaurantRating: {
+    fontSize: 12,
+    color: '#FF6B35',
+    marginTop: 2,
   },
-  restaurantMeta: {
+  menuSection: {
+    marginTop: 20,
+  },
+  menuItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 8,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  ratingContainer: {
+  menuItemName: {
+    fontSize: 16,
+    color: '#333',
+  },
+  menuItemPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FF6B35',
+  },
+  cartSection: {
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  cartItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 8,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  rating: {
-    fontSize: 14,
-    color: '#000000',
-    marginLeft: 4,
-    fontWeight: '500',
+  cartItemName: {
+    fontSize: 16,
+    color: '#333',
   },
-  ratingSelected: {
-    color: '#FFFFFF',
+  cartItemPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FF6B35',
   },
-  deliveryTime: {
-    fontSize: 14,
-    color: '#666666',
-  },
-  deliveryTimeSelected: {
-    color: '#FFFFFF',
-  },
-  selectedIndicator: {
-    marginLeft: 10,
-  },
-  bottomSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  orderButton: {
+  checkoutButton: {
     backgroundColor: '#FF6B35',
-    paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 8,
+    padding: 15,
     alignItems: 'center',
+    marginTop: 15,
   },
-  orderButtonDisabled: {
-    backgroundColor: '#CCCCCC',
-  },
-  orderButtonText: {
+  checkoutButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
 });
 

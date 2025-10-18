@@ -61,42 +61,15 @@ export default function App() {
     setCurrentScreen('voice-companion');
   };
 
-  const handleVoicePress = async () => {
-    console.log('Voice command pressed');
-    try {
-      // Start voice input
-      const userMessage = await VoiceAgentService.startListening();
-      console.log('User said:', userMessage);
-      
-      // Parse the voice command
-      const command = VoiceAgentService.parseVoiceCommand(userMessage);
-      console.log('Parsed command:', command);
-      
-      // Navigate based on command
-      switch (command.action) {
-        case 'ride':
-          setCurrentScreen('ride-booking');
-          break;
-        case 'food':
-          setCurrentScreen('food-ordering');
-          break;
-        case 'grocery':
-          setCurrentScreen('grocery-ordering');
-          break;
-        case 'bills':
-          setCurrentScreen('bill-payment');
-          break;
-        case 'companion':
-        default:
-          // For companion requests, navigate to voice companion screen
-          // The screen will handle using the companion agent
-          setCurrentScreen('voice-companion');
-          break;
-      }
-    } catch (error) {
-      console.error('Voice command error:', error);
-      // Fallback to companion screen
-      setCurrentScreen('voice-companion');
+  const handleVoicePress = async (targetScreen) => {
+    console.log('Voice navigation requested:', targetScreen);
+    
+    if (targetScreen) {
+      // Direct navigation from voice agent
+      setCurrentScreen(targetScreen);
+    } else {
+      // This shouldn't happen anymore since voice is handled in KakiHomeScreen
+      console.log('Voice press without target screen - this is unexpected');
     }
   };
 

@@ -4,17 +4,41 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { ElevenLabsProvider, useConversation } from '@elevenlabs/react-native';
 import VoiceAgentService from '../services/VoiceAgentService';
 
-const VoiceCompanionScreen = ({ userData, onBack }) => {
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [lastMessage, setLastMessage] = useState('');
+const ConversationScreen = ({ userData, onBack }) => {
+  const conversation = useConversation({
+    onConnect: ({ conversationId }) => {
+      console.log('✅ Connected to conversation', conversationId);
+    },
+    onDisconnect: (details) => {
+      console.log('❌ Disconnected from conversation', details);
+    },
+    onError: (message, context) => {
+      console.error('❌ Conversation error:', message, context);
+    },
+    onMessage: ({ message, source }) => {
+      console.log(`💬 Message from ${source}:`, message);
+    },
+    onModeChange: ({ mode }) => {
+      console.log(`🔊 Mode: ${mode}`);
+    },
+    onStatusChange: ({ status }) => {
+      console.log(`📡 Status: ${status}`);
+    },
+    onCanSendFeedbackChange: ({ canSendFeedback }) => {
+      console.log(`🔊 Can send feedback: ${canSendFeedback}`);
+    },
+  });
+
+  const [isStarting, setIsStarting] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -25,17 +49,17 @@ const VoiceCompanionScreen = ({ userData, onBack }) => {
     try {
       await VoiceAgentService.initialize();
       
-      // Test ElevenLabs connection for both agents
+      // Test ElevenLabs connection
       const connectionResults = await VoiceAgentService.testConnection();
-      if (connectionResults.companionAgent) {
-        console.log('Companion agent connected successfully');
-        setIsInitialized(true);
-      } else if (connectionResults.mainAgent) {
-        console.log('Main agent available, companion agent failed');
-        Alert.alert('Warning', 'Companion agent unavailable. Using main agent.');
+      if (connectionResults.mainAgent && connectionResults.companionAgent) {
+        console.log('ElevenLabs agents connected successfully');
         setIsInitialized(true);
       } else {
-        Alert.alert('Warning', 'Voice agents unavailable. Using fallback mode.');
+        console.log('ElevenLabs connection failed:', connectionResults.error);
+        Alert.alert(
+          'Voice Service Unavailable', 
+          `ElevenLabs API Error: ${connectionResults.error || 'Unknown error'}. Using fallback mode.`
+        );
         setIsInitialized(true); // Still allow usage with fallback
       }
     } catch (error) {
@@ -44,138 +68,119 @@ const VoiceCompanionScreen = ({ userData, onBack }) => {
     }
   };
 
-  const handleStartListening = async () => {
-    if (!isInitialized) {
-      Alert.alert('Error', 'Voice agent not initialized');
-      return;
-    }
+  const startConversation = async () => {
+    if (isStarting) return;
 
+    setIsStarting(true);
     try {
-      setIsListening(true);
-      const userMessage = await VoiceAgentService.startListening();
-      setLastMessage(userMessage);
-      
-      // Process the message with the companion agent
-      const companionCommand = {
-        action: 'companion',
-        type: 'conversation',
-        details: {
-          service: 'companion_conversation',
-          message: userMessage,
-          useCompanionAgent: true,
+      await conversation.startSession({
+        agentId: VoiceAgentService.COMPANION_AGENT_ID,
+        dynamicVariables: {
+          platform: Platform.OS,
+          userName: userData?.name || 'User',
         },
-      };
-      
-      const agentResponse = await VoiceAgentService.startVoiceConversation(userMessage, companionCommand);
-      setIsSpeaking(true);
-      
-      // Wait for speech to complete
-      setTimeout(() => {
-        setIsSpeaking(false);
-      }, 3000);
-      
+      });
     } catch (error) {
-      Alert.alert('Error', 'Failed to process voice input');
-      console.error('Voice input error:', error);
+      console.error('Failed to start conversation:', error);
+      Alert.alert('Error', 'Failed to start voice conversation. Please try again.');
     } finally {
-      setIsListening(false);
+      setIsStarting(false);
     }
   };
 
-  const handleStopListening = async () => {
+  const stopConversation = async () => {
     try {
-      await VoiceAgentService.stopListening();
-      setIsListening(false);
+      await conversation.endSession();
     } catch (error) {
-      console.error('Error stopping voice input:', error);
+      console.error('Failed to stop conversation:', error);
+    }
+  };
+
+  const sendFeedback = (feedback) => {
+    try {
+      conversation.sendFeedback(feedback);
+    } catch (error) {
+      console.error('Failed to send feedback:', error);
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Ionicons name="arrow-back" size={24} color="#000000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Voice Companion</Text>
-        <View style={styles.placeholder} />
-      </View>
+      <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <Ionicons name="arrow-back" size={24} color="#333" />
+      </TouchableOpacity>
 
-      {/* Main Content */}
       <View style={styles.content}>
-        {/* Status Indicator */}
+        <Text style={styles.title}>Your Kaki Companion</Text>
+        <Text style={styles.subtitle}>Voice-enabled AI assistant</Text>
+
         <View style={styles.statusContainer}>
-          {isListening && (
-            <View style={styles.statusIndicator}>
-              <ActivityIndicator size="large" color="#FF6B35" />
-              <Text style={styles.statusText}>Listening...</Text>
-            </View>
-          )}
-          
-          {isSpeaking && (
-            <View style={styles.statusIndicator}>
-              <Ionicons name="volume-high" size={32} color="#FF6B35" />
-              <Text style={styles.statusText}>Speaking...</Text>
-            </View>
-          )}
-          
-          {!isListening && !isSpeaking && (
-            <View style={styles.statusIndicator}>
-              <Ionicons name="mic" size={32} color="#8E8E93" />
-              <Text style={styles.statusText}>Ready to help</Text>
-            </View>
+          <Text style={styles.statusText}>
+            Status: {conversation.status}
+          </Text>
+          {conversation.mode && (
+            <Text style={styles.modeText}>
+              Mode: {conversation.mode}
+            </Text>
           )}
         </View>
 
-        {/* Last Message Display */}
-        {lastMessage && (
-          <View style={styles.messageContainer}>
-            <Text style={styles.messageLabel}>Last message:</Text>
-            <Text style={styles.messageText}>"{lastMessage}"</Text>
+        <TouchableOpacity
+          style={[
+            styles.micButton,
+            conversation.status === 'listening' && styles.micButtonListening,
+            conversation.status === 'speaking' && styles.micButtonSpeaking,
+          ]}
+          onPress={conversation.status === 'idle' ? startConversation : stopConversation}
+          disabled={isStarting || !isInitialized}
+        >
+          {isStarting ? (
+            <ActivityIndicator size="large" color="#FFFFFF" />
+          ) : conversation.status === 'listening' ? (
+            <Ionicons name="mic" size={48} color="#FFFFFF" />
+          ) : conversation.status === 'speaking' ? (
+            <Ionicons name="volume-high" size={48} color="#FFFFFF" />
+          ) : (
+            <Ionicons name="play" size={48} color="#FFFFFF" />
+          )}
+        </TouchableOpacity>
+
+        <Text style={styles.instructions}>
+          {isStarting
+            ? 'Starting conversation...'
+            : conversation.status === 'listening'
+            ? 'Listening... Speak now'
+            : conversation.status === 'speaking'
+            ? 'Kaki is speaking...'
+            : 'Tap to start voice conversation'}
+        </Text>
+
+        {conversation.canSendFeedback && (
+          <View style={styles.feedbackButtons}>
+            <TouchableOpacity
+              style={styles.likeButton}
+              onPress={() => sendFeedback('positive')}
+            >
+              <Ionicons name="thumbs-up" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dislikeButton}
+              onPress={() => sendFeedback('negative')}
+            >
+              <Ionicons name="thumbs-down" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
         )}
-
-        {/* Voice Control Button */}
-        <View style={styles.voiceControlContainer}>
-          <TouchableOpacity
-            style={[
-              styles.voiceButton,
-              isListening && styles.voiceButtonActive,
-              !isInitialized && styles.voiceButtonDisabled,
-            ]}
-            onPress={isListening ? handleStopListening : handleStartListening}
-            disabled={!isInitialized || isSpeaking}
-          >
-            <Ionicons
-              name={isListening ? "stop" : "mic"}
-              size={32}
-              color={isListening ? "#FFFFFF" : "#FF6B35"}
-            />
-            <Text style={[
-              styles.voiceButtonText,
-              isListening && styles.voiceButtonTextActive,
-            ]}>
-              {isListening ? 'Stop Listening' : 'Start Speaking'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Instructions */}
-        <View style={styles.instructionsContainer}>
-          <Text style={styles.instructionsTitle}>How to use:</Text>
-          <Text style={styles.instructionsText}>
-            • Tap the microphone to start speaking
-          </Text>
-          <Text style={styles.instructionsText}>
-            • Speak clearly and wait for the response
-          </Text>
-          <Text style={styles.instructionsText}>
-            • Ask for help with daily tasks, reminders, or questions
-          </Text>
-        </View>
       </View>
     </SafeAreaView>
+  );
+};
+
+const VoiceCompanionScreen = ({ userData, onBack }) => {
+  return (
+    <ElevenLabsProvider apiKey={VoiceAgentService.API_KEY}>
+      <ConversationScreen userData={userData} onBack={onBack} />
+    </ElevenLabsProvider>
   );
 };
 
@@ -183,112 +188,96 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F8F8',
-  },
-  header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    justifyContent: 'center',
   },
   backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  placeholder: {
-    width: 40,
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+    padding: 10,
   },
   content: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 30,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#666',
+    marginBottom: 40,
   },
   statusContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  statusIndicator: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  statusText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    marginTop: 8,
-  },
-  messageContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  messageLabel: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 4,
-  },
-  messageText: {
-    fontSize: 16,
-    color: '#000000',
-    fontStyle: 'italic',
-  },
-  voiceControlContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  voiceButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#FF6B35',
-    borderRadius: 50,
-    width: 120,
-    height: 120,
+    minHeight: 80,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 40,
   },
-  voiceButtonActive: {
-    backgroundColor: '#FF6B35',
-  },
-  voiceButtonDisabled: {
-    opacity: 0.5,
-  },
-  voiceButtonText: {
-    fontSize: 14,
+  statusText: {
+    fontSize: 20,
     color: '#FF6B35',
     fontWeight: '600',
-    textAlign: 'center',
+    marginBottom: 5,
   },
-  voiceButtonTextActive: {
-    color: '#FFFFFF',
-  },
-  instructionsContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-  },
-  instructionsTitle: {
+  modeText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 12,
+    color: '#666',
   },
-  instructionsText: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 8,
-    lineHeight: 20,
+  micButton: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#FF6B35',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 30,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  micButtonListening: {
+    backgroundColor: '#E05A2B',
+    transform: [{ scale: 1.1 }],
+  },
+  micButtonSpeaking: {
+    backgroundColor: '#34C759',
+    transform: [{ scale: 1.05 }],
+  },
+  instructions: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  feedbackButtons: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  likeButton: {
+    backgroundColor: '#10B981',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dislikeButton: {
+    backgroundColor: '#EF4444',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
