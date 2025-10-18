@@ -19,7 +19,7 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "supportsTablet": true,
-      "bundleIdentifier": "com.kaki.voiceapp",
+      "bundleIdentifier": "com.kakiapp.com",
       "bitcode": false
     },
     "android": {
@@ -38,7 +38,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.kaki.voiceapp"
+      "package": "com.kakiapp.com"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -46,7 +46,6 @@
     "plugins": [
       "expo-font",
       "expo-audio",
-      "@livekit/react-native-expo-plugin",
       "@config-plugins/react-native-webrtc"
     ],
     "extra": {
