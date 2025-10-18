@@ -1,66 +1,62 @@
-import React from 'react';
-import { StyleSheet, Text, View, SafeAreaView } from 'react-native';
+import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-
-// Import your Figma components here
-// import Button from './src/components/Button';
-// import Card from './src/components/Card';
+import StartScreen from './src/screens/StartScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+import KakiHomeScreen from './src/screens/KakiHomeScreen';
 
 export default function App() {
+  const [currentScreen, setCurrentScreen] = useState('start');
+  const [userData, setUserData] = useState(null);
+
+  const handleGetStarted = () => {
+    setCurrentScreen('onboarding');
+  };
+
+  const handleOnboardingComplete = (user) => {
+    setUserData(user);
+    setCurrentScreen('home');
+    console.log('User onboarded:', user);
+  };
+
+  const handleSettingsPress = () => {
+    console.log('Settings pressed');
+    // TODO: Navigate to settings screen
+  };
+
+  const handleActionPress = (actionId) => {
+    console.log(`Action pressed: ${actionId}`);
+    // TODO: Handle specific actions
+  };
+
+  const handleVoicePress = () => {
+    console.log('Voice command pressed');
+    // TODO: Implement voice functionality
+  };
+
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'start':
+        return <StartScreen onGetStarted={handleGetStarted} />;
+      case 'onboarding':
+        return <OnboardingScreen onComplete={handleOnboardingComplete} />;
+      case 'home':
+        return (
+          <KakiHomeScreen
+            userData={userData}
+            onSettingsPress={handleSettingsPress}
+            onActionPress={handleActionPress}
+            onVoicePress={handleVoicePress}
+          />
+        );
+      default:
+        return <StartScreen onGetStarted={handleGetStarted} />;
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <>
       <StatusBar style="auto" />
-      <View style={styles.content}>
-        <Text style={styles.title}>Figma Import Ready!</Text>
-        <Text style={styles.subtitle}>
-          Your React Native Expo app is set up for Figma imports.
-        </Text>
-        
-        {/* Add your imported Figma components here */}
-        <View style={styles.componentArea}>
-          <Text style={styles.placeholder}>
-            Import your Figma components here
-          </Text>
-        </View>
-      </View>
-    </SafeAreaView>
+      {renderScreen()}
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  componentArea: {
-    padding: 20,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    minHeight: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholder: {
-    fontSize: 14,
-    color: '#999',
-    fontStyle: 'italic',
-  },
-});
