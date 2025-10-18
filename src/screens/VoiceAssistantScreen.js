@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import VoiceAgentService from '../services/VoiceAgentService';
 
-const VoiceCompanionScreen = ({ userData, onBack }) => {
+const VoiceAssistantScreen = ({ userData, onBack, onNavigate }) => {
   const userName = userData?.name || 'User';
   
   const htmlContent = `
@@ -13,7 +13,7 @@ const VoiceCompanionScreen = ({ userData, onBack }) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Kaki Companion</title>
+  <title>Kaki Voice Assistant</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -50,11 +50,10 @@ const VoiceCompanionScreen = ({ userData, onBack }) => {
     }
     h1 { font-size: 32px; font-weight: bold; color: #333; margin-bottom: 10px; }
     .subtitle { font-size: 18px; color: #666; margin-bottom: 40px; }
-    .status { min-height: 80px; margin-bottom: 40px; }
-    .status-text { font-size: 20px; color: #FF6B35; font-weight: 600; margin-bottom: 5px; }
-    .mode-text { font-size: 16px; color: #666; }
+    .status { min-height: 60px; margin-bottom: 40px; }
+    .status-text { font-size: 18px; color: #FF6B35; font-weight: 600; }
     .mic-button {
-      width: 120px; height: 120px; border-radius: 60px; background: #FF6B35;
+      width: 100px; height: 100px; border-radius: 50px; background: #FF6B35;
       border: none; display: flex; align-items: center; justify-content: center;
       margin: 0 auto 30px; cursor: pointer;
       box-shadow: 0 5px 20px rgba(255, 107, 53, 0.4);
@@ -64,13 +63,13 @@ const VoiceCompanionScreen = ({ userData, onBack }) => {
     .mic-button.listening { background: #E05A2B; transform: scale(1.1); }
     .mic-button.speaking { background: #34C759; transform: scale(1.05); }
     .mic-button.disabled { background: #CCCCCC; opacity: 0.6; cursor: not-allowed; }
-    .mic-icon { font-size: 48px; color: white; }
-    .instructions { font-size: 16px; color: #888; margin-bottom: 20px; }
+    .mic-icon { font-size: 40px; color: white; }
+    .instructions { font-size: 16px; color: #888; }
     .spinner {
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-top: 4px solid white;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top: 3px solid white;
       border-radius: 50%;
-      width: 48px; height: 48px;
+      width: 40px; height: 40px;
       animation: spin 1s linear infinite;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -80,24 +79,22 @@ const VoiceCompanionScreen = ({ userData, onBack }) => {
   <button class="back-button" onclick="window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({action:'back'}))">←</button>
   
   <div class="container">
-    <h1>Your Kaki Companion</h1>
-    <p class="subtitle">Voice-enabled AI assistant</p>
+    <h1>Voice Assistant</h1>
+    <p class="subtitle">Speak your command</p>
     <div class="status">
       <p class="status-text" id="status">Status: initializing</p>
-      <p class="mode-text" id="mode"></p>
     </div>
     <button id="micButton" class="mic-button">
-      <span class="mic-icon" id="buttonIcon">▶</span>
+      <span class="mic-icon" id="buttonIcon">🎤</span>
     </button>
-    <p class="instructions" id="instructions">Loading voice service...</p>
+    <p class="instructions" id="instructions">Loading...</p>
   </div>
 
   <script type="module">
-    const agentId = '${VoiceAgentService.COMPANION_AGENT_ID}';
+    const agentId = '${VoiceAgentService.AGENT_ID}';
     const apiKey = '${VoiceAgentService.API_KEY}';
     
     const statusEl = document.getElementById('status');
-    const modeEl = document.getElementById('mode');
     const buttonEl = document.getElementById('micButton');
     const iconEl = document.getElementById('buttonIcon');
     const instructionsEl = document.getElementById('instructions');
@@ -110,41 +107,39 @@ const VoiceCompanionScreen = ({ userData, onBack }) => {
         const { Conversation } = await import('https://cdn.jsdelivr.net/npm/@11labs/client/+esm');
         window.ElevenLabsConversation = Conversation;
         statusEl.textContent = 'Status: ready';
-        instructionsEl.textContent = 'Tap to start voice conversation';
+        instructionsEl.textContent = 'Tap to speak';
         return true;
       } catch (error) {
-        console.error('Failed to load SDK:', error);
-        statusEl.textContent = 'Status: SDK load failed';
-        instructionsEl.textContent = 'Error: ' + error.message;
+        statusEl.textContent = 'Status: error';
+        instructionsEl.textContent = 'SDK failed: ' + error.message;
         return false;
       }
     }
 
     function updateUI(status, mode) {
       statusEl.textContent = 'Status: ' + status;
-      modeEl.textContent = mode ? 'Mode: ' + mode : '';
       buttonEl.className = 'mic-button';
       
       if (status === 'connecting') {
         buttonEl.classList.add('disabled');
         iconEl.innerHTML = '<div class="spinner"></div>';
-        instructionsEl.textContent = 'Starting conversation...';
+        instructionsEl.textContent = 'Connecting...';
       } else if (status === 'connected') {
         if (mode === 'listening') {
           buttonEl.classList.add('listening');
           iconEl.textContent = '🎤';
-          instructionsEl.textContent = 'Listening... Speak now';
+          instructionsEl.textContent = 'Listening...';
         } else if (mode === 'speaking') {
           buttonEl.classList.add('speaking');
           iconEl.textContent = '🔊';
           instructionsEl.textContent = 'Kaki is speaking...';
         } else {
           iconEl.textContent = '⏹';
-          instructionsEl.textContent = 'Connected! Tap to stop';
+          instructionsEl.textContent = 'Tap to stop';
         }
       } else if (status === 'ready') {
-        iconEl.textContent = '▶';
-        instructionsEl.textContent = 'Tap to start voice conversation';
+        iconEl.textContent = '🎤';
+        instructionsEl.textContent = 'Tap to speak';
       }
     }
 
@@ -160,28 +155,38 @@ const VoiceCompanionScreen = ({ userData, onBack }) => {
         conversation = await window.ElevenLabsConversation.startSession({
           agentId: agentId,
           onConnect: () => {
-            console.log('✅ Connected');
             isConnected = true;
             updateUI('connected', null);
           },
           onDisconnect: () => {
-            console.log('❌ Disconnected');
             isConnected = false;
             updateUI('ready', null);
           },
           onError: (error) => {
-            console.error('❌ Error:', error);
             updateUI('ready', null);
-            alert('Failed: ' + error);
+            alert('Error: ' + error);
           },
           onModeChange: ({ mode }) => {
-            console.log('🔊 Mode:', mode);
             updateUI('connected', mode);
+          },
+          onMessage: ({ message, source }) => {
+            if (source === 'ai' && message.message) {
+              const text = message.message.toLowerCase();
+              let action = null;
+              
+              if (text.includes('ride') || text.includes('taxi')) action = 'ride-booking';
+              else if (text.includes('food') || text.includes('meal')) action = 'food-ordering';
+              else if (text.includes('grocery')) action = 'grocery-ordering';
+              else if (text.includes('bill')) action = 'bill-payment';
+              
+              if (action && window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ action: 'navigate', screen: action }));
+              }
+            }
           },
         });
         
       } catch (error) {
-        console.error('Start error:', error);
         updateUI('ready', null);
         alert('Error: ' + error.message);
       }
@@ -215,6 +220,8 @@ const VoiceCompanionScreen = ({ userData, onBack }) => {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.action === 'back') {
         onBack();
+      } else if (data.action === 'navigate' && data.screen) {
+        onNavigate(data.screen);
       }
     } catch (error) {
       console.error('WebView message error:', error);
@@ -249,4 +256,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default VoiceCompanionScreen;
+export default VoiceAssistantScreen;

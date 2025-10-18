@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kaki Voice Assistant</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #F8F8F8;
+      padding: 20px;
+      overflow: hidden;
+      height: 100vh;
+    }
+    .voice-section {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 20px;
+      background: #F8F8F8;
+      border-top: 1px solid #E5E5E5;
+      text-align: center;
+    }
+    .voice-button {
+      background: #FF6B35;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 16px 32px;
+      width: 100%;
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .voice-button:active {
+      transform: scale(0.98);
+    }
+    .voice-button.active {
+      background: #E05A2B;
+    }
+    .voice-button.disabled {
+      background: #CCCCCC;
+      cursor: not-allowed;
+    }
+    .voice-instruction {
+      font-size: 14px;
+      color: #8E8E93;
+    }
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top: 3px solid white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="voice-section">
+    <button id="voiceButton" class="voice-button">
+      <span id="buttonIcon">🎤</span>
+      <span id="buttonText">Speak</span>
+    </button>
+    <p class="voice-instruction" id="instructions">Tap to start voice conversation</p>
+  </div>
+
+  <script type="module">
+    import { Conversation } from 'https://cdn.jsdelivr.net/npm/@11labs/client@latest/+esm';
+
+    const params = new URLSearchParams(window.location.search);
+    const agentId = params.get('agentId') || 'agent_9601k7v1dtekej68p3x13zv4erse';
+    const apiKey = params.get('apiKey');
+    const userName = params.get('userName') || 'User';
+
+    let conversation;
+    let currentStatus = 'idle';
+    let currentMode = null;
+
+    const buttonEl = document.getElementById('voiceButton');
+    const iconEl = document.getElementById('buttonIcon');
+    const textEl = document.getElementById('buttonText');
+    const instructionsEl = document.getElementById('instructions');
+
+    function updateUI() {
+      buttonEl.className = 'voice-button';
+      
+      if (currentStatus === 'connecting') {
+        buttonEl.classList.add('disabled');
+        iconEl.innerHTML = '<div class="spinner"></div>';
+        textEl.textContent = 'Connecting...';
+        instructionsEl.textContent = 'Starting voice agent...';
+      } else if (currentStatus === 'connected') {
+        if (currentMode === 'listening') {
+          buttonEl.classList.add('active');
+          iconEl.textContent = '🎤';
+          textEl.textContent = 'Listening...';
+          instructionsEl.textContent = 'Speak your request now';
+        } else if (currentMode === 'speaking') {
+          buttonEl.classList.add('active');
+          iconEl.textContent = '🔊';
+          textEl.textContent = 'Speaking...';
+          instructionsEl.textContent = 'Kaki is responding...';
+        } else {
+          iconEl.textContent = '⏹';
+          textEl.textContent = 'Stop';
+          instructionsEl.textContent = 'Tap to end conversation';
+        }
+      } else {
+        iconEl.textContent = '🎤';
+        textEl.textContent = 'Speak';
+        instructionsEl.textContent = 'Tap to start voice conversation';
+      }
+    }
+
+    async function startSession() {
+      try {
+        currentStatus = 'connecting';
+        updateUI();
+        
+        conversation = await Conversation.startSession({
+          agentId: agentId,
+          onConnect: () => {
+            console.log('✅ Connected to agent');
+            currentStatus = 'connected';
+            updateUI();
+          },
+          onDisconnect: () => {
+            console.log('❌ Disconnected');
+            currentStatus = 'idle';
+            currentMode = null;
+            updateUI();
+          },
+          onError: (error) => {
+            console.error('❌ Error:', error);
+            currentStatus = 'idle';
+            updateUI();
+          },
+          onModeChange: ({ mode }) => {
+            console.log('🔊 Mode:', mode);
+            currentMode = mode;
+            updateUI();
+          },
+          onMessage: ({ message, source }) => {
+            console.log(`💬 ${source}:`, message);
+            
+            // Send navigation commands back to React Native
+            if (source === 'ai' && message.message) {
+              const text = message.message.toLowerCase();
+              let action = null;
+              
+              if (text.includes('ride') || text.includes('taxi') || text.includes('car')) {
+                action = 'ride';
+              } else if (text.includes('food') || text.includes('meal') || text.includes('restaurant')) {
+                action = 'food';
+              } else if (text.includes('grocery') || text.includes('groceries')) {
+                action = 'grocery';
+              } else if (text.includes('bill') || text.includes('payment')) {
+                action = 'bills';
+              }
+              
+              if (action && window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ action }));
+              }
+            }
+          },
+        });
+
+        // Request microphone permission
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+      } catch (error) {
+        console.error('Failed to start session:', error);
+        currentStatus = 'idle';
+        updateUI();
+        alert('Failed to start: ' + error.message);
+      }
+    }
+
+    async function endSession() {
+      if (conversation) {
+        await conversation.endSession();
+        conversation = null;
+        currentStatus = 'idle';
+        currentMode = null;
+        updateUI();
+      }
+    }
+
+    buttonEl.addEventListener('click', async () => {
+      if (currentStatus === 'connecting') return;
+      
+      if (currentStatus === 'connected') {
+        await endSession();
+      } else {
+        await startSession();
+      }
+    });
+
+    updateUI();
+  </script>
+</body>
+</html>
+

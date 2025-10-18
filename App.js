@@ -4,12 +4,12 @@ import StartScreen from './src/screens/StartScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import KakiHomeScreen from './src/screens/KakiHomeScreen';
 import VoiceCompanionScreen from './src/screens/VoiceCompanionScreen';
+import VoiceAssistantScreen from './src/screens/VoiceAssistantScreen';
 import RideBookingScreen from './src/screens/RideBookingScreen';
 import FoodOrderingScreen from './src/screens/FoodOrderingScreen';
 import BillPaymentScreen from './src/screens/BillPaymentScreen';
 import GroceryOrderingScreen from './src/screens/GroceryOrderingScreen';
 import UserSessionService from './src/services/UserSessionService';
-import VoiceAgentService from './src/services/VoiceAgentService';
 import ErrorBoundary from './src/components/ErrorBoundary';
 
 export default function App() {
@@ -104,7 +104,6 @@ export default function App() {
         );
       case 'voice-companion':
         if (!userData) {
-          // If no user data, redirect to home
           setCurrentScreen('home');
           return null;
         }
@@ -112,6 +111,18 @@ export default function App() {
           <VoiceCompanionScreen
             userData={userData}
             onBack={handleBackToHome}
+          />
+        );
+      case 'voice-assistant':
+        if (!userData) {
+          setCurrentScreen('home');
+          return null;
+        }
+        return (
+          <VoiceAssistantScreen
+            userData={userData}
+            onBack={handleBackToHome}
+            onNavigate={handleVoicePress}
           />
         );
       case 'ride-booking':

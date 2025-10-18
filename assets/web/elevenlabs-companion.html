@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kaki Companion</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #F8F8F8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 20px;
+      overflow: hidden;
+    }
+    .container {
+      text-align: center;
+      width: 100%;
+      max-width: 400px;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      font-size: 18px;
+      color: #666;
+      margin-bottom: 40px;
+    }
+    .status {
+      min-height: 80px;
+      margin-bottom: 40px;
+    }
+    .status-text {
+      font-size: 20px;
+      color: #FF6B35;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    .mode-text {
+      font-size: 16px;
+      color: #666;
+    }
+    .mic-button {
+      width: 120px;
+      height: 120px;
+      border-radius: 60px;
+      background: #FF6B35;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 30px;
+      cursor: pointer;
+      box-shadow: 0 5px 20px rgba(255, 107, 53, 0.4);
+      transition: all 0.3s;
+    }
+    .mic-button:active {
+      transform: scale(0.95);
+    }
+    .mic-button.listening {
+      background: #E05A2B;
+      transform: scale(1.1);
+    }
+    .mic-button.speaking {
+      background: #34C759;
+      transform: scale(1.05);
+    }
+    .mic-button.disabled {
+      background: #CCCCCC;
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .mic-icon {
+      font-size: 48px;
+      color: white;
+    }
+    .instructions {
+      font-size: 16px;
+      color: #888;
+      margin-bottom: 20px;
+    }
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Your Kaki Companion</h1>
+    <p class="subtitle">Voice-enabled AI assistant</p>
+    
+    <div class="status">
+      <p class="status-text" id="status">Status: disconnected</p>
+      <p class="mode-text" id="mode"></p>
+    </div>
+    
+    <button id="micButton" class="mic-button">
+      <span class="mic-icon" id="buttonIcon">▶</span>
+    </button>
+    
+    <p class="instructions" id="instructions">Tap to start voice conversation</p>
+  </div>
+
+  <script type="module">
+    import { Conversation } from 'https://cdn.jsdelivr.net/npm/@11labs/client@latest/+esm';
+
+    const params = new URLSearchParams(window.location.search);
+    const agentId = params.get('agentId') || 'agent_9601k7v1dtekej68p3x13zv4erse';
+    const apiKey = params.get('apiKey');
+    const userName = params.get('userName') || 'User';
+
+    let conversation;
+    let isConnected = false;
+
+    const statusEl = document.getElementById('status');
+    const modeEl = document.getElementById('mode');
+    const buttonEl = document.getElementById('micButton');
+    const iconEl = document.getElementById('buttonIcon');
+    const instructionsEl = document.getElementById('instructions');
+
+    function updateUI(status, mode) {
+      statusEl.textContent = `Status: ${status}`;
+      modeEl.textContent = mode ? `Mode: ${mode}` : '';
+      
+      buttonEl.className = 'mic-button';
+      
+      if (status === 'connecting') {
+        buttonEl.classList.add('disabled');
+        iconEl.innerHTML = '<div class="spinner"></div>';
+        instructionsEl.textContent = 'Starting conversation...';
+      } else if (status === 'connected') {
+        if (mode === 'listening') {
+          buttonEl.classList.add('listening');
+          iconEl.textContent = '🎤';
+          instructionsEl.textContent = 'Listening... Speak now';
+        } else if (mode === 'speaking') {
+          buttonEl.classList.add('speaking');
+          iconEl.textContent = '🔊';
+          instructionsEl.textContent = 'Kaki is speaking...';
+        } else {
+          iconEl.textContent = '⏹';
+          instructionsEl.textContent = 'Connected! Tap to stop';
+        }
+      } else {
+        iconEl.textContent = '▶';
+        instructionsEl.textContent = 'Tap to start voice conversation';
+      }
+    }
+
+    async function startConversation() {
+      try {
+        updateUI('connecting', null);
+        
+        conversation = await Conversation.startSession({
+          agentId: agentId,
+          onConnect: () => {
+            console.log('✅ Connected');
+            isConnected = true;
+            updateUI('connected', null);
+          },
+          onDisconnect: () => {
+            console.log('❌ Disconnected');
+            isConnected = false;
+            updateUI('disconnected', null);
+          },
+          onError: (error) => {
+            console.error('❌ Error:', error);
+            updateUI('disconnected', null);
+            alert('Failed to connect: ' + error);
+          },
+          onModeChange: ({ mode }) => {
+            console.log('🔊 Mode:', mode);
+            updateUI('connected', mode);
+          },
+          onMessage: ({ message, source }) => {
+            console.log(`💬 ${source}:`, message);
+          },
+        });
+
+        // Request microphone permission
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+      } catch (error) {
+        console.error('Failed to start:', error);
+        updateUI('disconnected', null);
+        alert('Error: ' + error.message);
+      }
+    }
+
+    async function stopConversation() {
+      if (conversation) {
+        await conversation.endSession();
+        conversation = null;
+        isConnected = false;
+        updateUI('disconnected', null);
+      }
+    }
+
+    buttonEl.addEventListener('click', async () => {
+      if (isConnected) {
+        await stopConversation();
+      } else if (buttonEl.classList.contains('disabled')) {
+        return;
+      } else {
+        await startConversation();
+      }
+    });
+
+    // Initial state
+    updateUI('disconnected', null);
+  </script>
+</body>
+</html>
+

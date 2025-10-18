@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
-  ActivityIndicator,
   Alert,
   Platform,
   PermissionsAndroid,
@@ -14,9 +13,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { ElevenLabsProvider, useConversation } from '@elevenlabs/react-native';
-import { Audio } from 'expo-av';
-import VoiceAgentService from '../services/VoiceAgentService';
 
 const { width, height } = Dimensions.get('window');
 const isSmallScreen = height < 700;
@@ -56,7 +52,7 @@ const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoi
         if (!micGranted) {
           Alert.alert(
             'Microphone Permission Required',
-            'Kaki needs microphone permission to provide voice assistance. Please grant this permission in Settings.',
+            'Kaki needs microphone permission to provide voice assistance.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() }
@@ -70,102 +66,14 @@ const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoi
           console.log('⚠️ Location permission not granted, but app will continue');
         }
       } else {
-        console.log('📱 iOS: Requesting microphone permission...');
-        
-        try {
-          let granted = true;
-          if (Audio && typeof Audio.requestRecordingPermissionsAsync === 'function') {
-            const result = await Audio.requestRecordingPermissionsAsync();
-            granted = !!result?.granted;
-            console.log('Audio permission result:', granted);
-          } else if (Audio && typeof Audio.requestPermissionsAsync === 'function') {
-            const result = await Audio.requestPermissionsAsync();
-            granted = !!result?.granted;
-            console.log('Audio permission result (fallback):', granted);
-          } else {
-            console.log('Audio permission API not available; proceeding without explicit request');
-            granted = true;
-          }
-          
-          if (granted) {
-            console.log('✅ Microphone permission granted');
-            setPermissionsGranted(true);
-          } else {
-            console.log('❌ Microphone permission denied');
-            Alert.alert(
-              'Microphone Permission Required',
-              'Kaki needs microphone permission to provide voice assistance. Please grant this permission in Settings.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Open Settings', onPress: () => Linking.openSettings() }
-              ]
-            );
-          }
-        } catch (audioError) {
-          console.error('❌ Audio permission error:', audioError);
-          setPermissionsGranted(true);
-        }
+        console.log('📱 iOS: Microphone permission will be requested by WebView');
+        setPermissionsGranted(true);
       }
     } catch (error) {
       console.error('❌ Permission request error:', error);
       setPermissionsGranted(true);
     }
   };
-  
-  // ElevenLabs conversation hook
-  const conversation = useConversation({
-    onConnect: ({ conversationId }) => {
-      console.log('✅ Connected to conversation', conversationId);
-    },
-    onDisconnect: (details) => {
-      console.log('❌ Disconnected from conversation', details);
-      setIsVoiceActive(false);
-    },
-    onError: (message, context) => {
-      console.error('❌ Conversation error:', message, context);
-      setIsVoiceActive(false);
-      Alert.alert('Voice Error', 'Failed to connect to voice agent. Please try again.');
-    },
-    onMessage: ({ message, source }) => {
-      console.log(`💬 Message from ${source}:`, message);
-      
-      // Parse agent responses for navigation commands
-      if (source === 'agent' && message.type === 'agent_response') {
-        const responseText = message.message?.toLowerCase() || '';
-        const command = VoiceAgentService.parseVoiceCommand(responseText);
-        
-        // Navigate based on agent's understanding
-        if (command.action !== 'companion') {
-          setTimeout(() => {
-            switch (command.action) {
-              case 'ride':
-                onVoicePress && onVoicePress('ride-booking');
-                break;
-              case 'food':
-                onVoicePress && onVoicePress('food-ordering');
-                break;
-              case 'grocery':
-                onVoicePress && onVoicePress('grocery-ordering');
-                break;
-              case 'bills':
-                onVoicePress && onVoicePress('bill-payment');
-                break;
-            }
-          }, 1000);
-        }
-      }
-    },
-    onModeChange: ({ mode }) => {
-      console.log(`🔊 Mode: ${mode}`);
-      setIsVoiceActive(mode === 'listening' || mode === 'speaking');
-    },
-    onStatusChange: ({ status }) => {
-      console.log(`📡 Status: ${status}`);
-      if (status === 'idle') {
-        setIsVoiceActive(false);
-      }
-    },
-  });
 
   const actionCards = [
     {
@@ -231,30 +139,11 @@ const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoi
     }
   };
 
-  const handleVoicePress = async () => {
-    console.log('Voice command pressed');
-    
-    try {
-      if (conversation.status === 'idle') {
-        // Start new conversation with the main service agent
-        setIsVoiceActive(true);
-        await conversation.startSession({
-          agentId: VoiceAgentService.AGENT_ID,
-          dynamicVariables: {
-            platform: Platform.OS,
-            userName: userName,
-            context: 'home_screen_voice_command'
-          },
-        });
-      } else if (conversation.status === 'connected') {
-        // End current conversation
-        await conversation.endSession();
-        setIsVoiceActive(false);
-      }
-    } catch (error) {
-      console.error('Voice command error:', error);
-      setIsVoiceActive(false);
-      Alert.alert('Voice Error', 'Failed to start voice conversation. Please try again.');
+  const handleVoicePress = () => {
+    console.log('Voice command pressed - opening WebView voice assistant');
+    // Navigate to WebView-based voice assistant
+    if (onVoicePress) {
+      onVoicePress('voice-assistant');
     }
   };
 
@@ -299,37 +188,14 @@ const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoi
       {/* Voice Command Section */}
       <View style={styles.voiceSection}>
         <TouchableOpacity 
-          style={[
-            styles.voiceButton, 
-            (isVoiceActive || conversation.status === 'connected') && styles.voiceButtonActive
-          ]} 
+          style={styles.voiceButton} 
           onPress={handleVoicePress}
-          disabled={conversation.status === 'connecting'}
         >
-          {conversation.status === 'connecting' ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : conversation.mode === 'listening' ? (
-            <Ionicons name="mic" size={24} color="#FFFFFF" style={styles.micIcon} />
-          ) : conversation.mode === 'speaking' ? (
-            <Ionicons name="volume-high" size={24} color="#FFFFFF" style={styles.micIcon} />
-          ) : conversation.status === 'connected' ? (
-            <Ionicons name="stop" size={24} color="#FFFFFF" style={styles.micIcon} />
-          ) : (
-            <Ionicons name="mic" size={24} color="#FFFFFF" style={styles.micIcon} />
-          )}
-          <Text style={styles.voiceButtonText}>
-            {conversation.status === 'connecting' ? 'Connecting...' :
-             conversation.mode === 'listening' ? 'Listening...' :
-             conversation.mode === 'speaking' ? 'Speaking...' :
-             conversation.status === 'connected' ? 'Stop' : 'Speak'}
-          </Text>
+          <Ionicons name="mic" size={24} color="#FFFFFF" style={styles.micIcon} />
+          <Text style={styles.voiceButtonText}>Speak</Text>
         </TouchableOpacity>
         <Text style={styles.voiceInstruction}>
-          {conversation.status === 'connecting' ? 'Starting voice agent...' :
-           conversation.mode === 'listening' ? 'Speak your request now' :
-           conversation.mode === 'speaking' ? 'Kaki is responding...' :
-           conversation.status === 'connected' ? 'Tap to end conversation' :
-           'Tap to start voice conversation'}
+          Tap to start voice conversation
         </Text>
       </View>
     </SafeAreaView>
@@ -457,13 +323,5 @@ const styles = StyleSheet.create({
   },
 });
 
-// Main component with ElevenLabs provider
-const KakiHomeScreen = (props) => {
-  return (
-    <ElevenLabsProvider apiKey={VoiceAgentService.API_KEY}>
-      <KakiHomeScreenContent {...props} />
-    </ElevenLabsProvider>
-  );
-};
-
-export default KakiHomeScreen;
+// Export the component directly (no ElevenLabs provider needed for WebView approach)
+export default KakiHomeScreenContent;
