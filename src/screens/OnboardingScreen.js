@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import UserService from '../services/UserService';
+import UserSessionService from '../services/UserSessionService';
 import { testSupabaseConnection } from '../utils/supabaseTest';
 
 const OnboardingScreen = ({ onComplete }) => {
@@ -28,7 +29,7 @@ const OnboardingScreen = ({ onComplete }) => {
     }
 
     if (!UserService.validatePhoneNumber(phoneNumber)) {
-      Alert.alert('Error', 'Please enter a valid phone number (at least 8 digits)');
+      Alert.alert('Error', 'Please enter a valid phone number (exactly 8 digits)');
       return;
     }
 
@@ -49,6 +50,9 @@ const OnboardingScreen = ({ onComplete }) => {
       });
       
       console.log('User created successfully:', userData);
+      
+      // Save user session for persistence
+      await UserSessionService.createUserSession(userData);
       
       Alert.alert('Success', 'Welcome to Kaki!', [
         {

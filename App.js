@@ -1,12 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import StartScreen from './src/screens/StartScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import KakiHomeScreen from './src/screens/KakiHomeScreen';
+import UserSessionService from './src/services/UserSessionService';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('start');
   const [userData, setUserData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check for existing user session on app startup
+  useEffect(() => {
+    const checkUserSession = async () => {
+      try {
+        const existingUser = await UserSessionService.restoreUserFromSession();
+        if (existingUser) {
+          setUserData(existingUser);
+          setCurrentScreen('home');
+        }
+      } catch (error) {
+        console.error('Error checking user session:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUserSession();
+  }, []);
 
   const handleGetStarted = () => {
     setCurrentScreen('onboarding');
@@ -34,6 +55,10 @@ export default function App() {
   };
 
   const renderScreen = () => {
+    if (isLoading) {
+      return null; // Or a loading screen component
+    }
+
     switch (currentScreen) {
       case 'start':
         return <StartScreen onGetStarted={handleGetStarted} />;

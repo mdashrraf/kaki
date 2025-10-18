@@ -29,13 +29,16 @@ export class UserService {
         return existingUser;
       }
 
+      // Clean phone number (remove all non-digit characters)
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      
       // Create new user
       const { data, error } = await supabase
         .from('users')
         .insert([
           {
             name: name.trim(),
-            phone_number: phoneNumber.trim(),
+            phone_number: cleanPhoneNumber,
             country_code: countryCode,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -64,10 +67,13 @@ export class UserService {
    */
   static async getUserByPhone(phoneNumber) {
     try {
+      // Clean phone number for consistent lookup
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('phone_number', phoneNumber.trim())
+        .eq('phone_number', cleanPhoneNumber)
         .eq('is_active', true)
         .single();
 
@@ -187,14 +193,15 @@ export class UserService {
   }
 
   /**
-   * Validate phone number format
+   * Validate phone number format (exactly 8 digits)
    * @param {string} phoneNumber - Phone number to validate
    * @returns {boolean} True if valid
    */
   static validatePhoneNumber(phoneNumber) {
-    // Basic validation - at least 8 digits, no special characters except spaces
-    const phoneRegex = /^[\d\s]{8,}$/;
-    return phoneRegex.test(phoneNumber.replace(/\s/g, ''));
+    // Remove all non-digit characters
+    const cleanNumber = phoneNumber.replace(/\D/g, '');
+    // Check if exactly 8 digits
+    return cleanNumber.length === 8;
   }
 
   /**
