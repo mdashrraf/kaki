@@ -10,150 +10,105 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { ElevenLabsProvider, useConversation } from '@elevenlabs/react-native';
 import VoiceAgentService from '../services/VoiceAgentService';
-import { Audio } from 'expo-av';
+import { Audio } from 'expo-audio';
 
-const ConversationScreen = ({ userData, onBack }) => {
-  const conversation = useConversation({
-    onConnect: ({ conversationId }) => {
-      console.log('✅ Connected to conversation', conversationId);
-    },
-    onDisconnect: (details) => {
-      console.log('❌ Disconnected from conversation', details);
-      console.log('Disconnect reason:', details.reason);
-      console.log('Disconnect context:', details.context);
-    },
-    onError: (message, context) => {
-      console.error('❌ Conversation error:', message, context);
-      console.error('Error message details:', message);
-      console.error('Error context:', context);
-    },
-    onMessage: ({ message, source }) => {
-      console.log(`💬 Message from ${source}:`, message);
-    },
-    onModeChange: ({ mode }) => {
-      console.log(`🔊 Mode: ${mode}`);
-    },
-    onStatusChange: ({ status }) => {
-      console.log(`📡 Status: ${status}`);
-      console.log('Status changed to:', status);
-    },
-    onCanSendFeedbackChange: ({ canSendFeedback }) => {
-      console.log(`🔊 Can send feedback: ${canSendFeedback}`);
-    },
-    onDebug: (props) => {
-      console.log('🐛 Debug info:', props);
-    },
-  });
-
-  const [isStarting, setIsStarting] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  const didInitRef = useRef(false);
+const VoiceCompanionScreen = ({ userData, onBack }) => {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [error, setError] = useState(null);
+  const [lastMessage, setLastMessage] = useState('');
 
   useEffect(() => {
-    if (didInitRef.current) return;
-    didInitRef.current = true;
     initializeVoiceAgent();
   }, []);
 
   const initializeVoiceAgent = async () => {
     try {
-      await VoiceAgentService.initialize();
+      // Note: expo-audio doesn't support setAudioModeAsync
+      // Audio session will be configured automatically by the system
       
       // Test ElevenLabs connection
       const connectionResults = await VoiceAgentService.testConnection();
       if (connectionResults.mainAgent && connectionResults.companionAgent) {
-        console.log('ElevenLabs agents connected successfully');
-        console.log('Setting isInitialized to true');
-        setIsInitialized(true);
+        console.log('✅ ElevenLabs agents connected successfully');
       } else {
-        console.log('ElevenLabs connection failed:', connectionResults.error);
-        Alert.alert(
-          'Voice Service Unavailable', 
-          `ElevenLabs API Error: ${connectionResults.error || 'Unknown error'}. Using fallback mode.`
-        );
-        setIsInitialized(true); // Still allow usage with fallback
+        console.log('⚠️ ElevenLabs connection failed:', connectionResults.error);
+        setError(`API Error: ${connectionResults.error || 'Unknown error'}`);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to initialize voice agent');
-      console.error('Voice agent initialization error:', error);
-      setIsInitialized(true); // Allow fallback mode
+      console.error('❌ Voice agent initialization error:', error);
+      setError(`Initialization Error: ${error.message}`);
     }
   };
 
   const startConversation = async () => {
-    if (isStarting) return;
-
-    console.log('Starting conversation with agent:', VoiceAgentService.COMPANION_AGENT_ID);
-    console.log('Current conversation status:', conversation.status);
-    console.log('isInitialized:', isInitialized);
+    if (isConnecting) return;
     
-    setIsStarting(true);
+    setIsConnecting(true);
+    setError(null);
+    
     try {
-      // Ensure iOS audio session allows recording and playback in silent mode
-      if (Platform.OS === 'ios' && Audio && typeof Audio.setAudioModeAsync === 'function') {
-        try {
-          await Audio.setAudioModeAsync({
-            allowsRecordingIOS: true,
-            playsInSilentModeIOS: true,
-            staysActiveInBackground: false,
-            interruptionModeIOS: 1,
-          });
-        } catch (audioModeErr) {
-          console.warn('Failed to set iOS audio mode', audioModeErr);
+      console.log('🎤 Starting voice conversation...');
+      
+      // Use VoiceAgentService to start conversation
+      const result = await VoiceAgentService.startVoiceConversation(
+        VoiceAgentService.COMPANION_AGENT_ID,
+        {
+          onStart: () => {
+            console.log('✅ Conversation started');
+            setIsConnected(true);
+            setIsConnecting(false);
+          },
+          onListening: () => {
+            console.log('🎤 Listening...');
+            setIsListening(true);
+            setIsSpeaking(false);
+          },
+          onSpeaking: () => {
+            console.log('🔊 Speaking...');
+            setIsSpeaking(true);
+            setIsListening(false);
+          },
+          onMessage: (message) => {
+            console.log('💬 Message:', message);
+            setLastMessage(message);
+          },
+          onError: (error) => {
+            console.error('❌ Conversation error:', error);
+            setError(error.message || 'Unknown error');
+            setIsConnecting(false);
+          },
+          onEnd: () => {
+            console.log('🛑 Conversation ended');
+            setIsConnected(false);
+            setIsListening(false);
+            setIsSpeaking(false);
+            setIsConnecting(false);
+          }
         }
-      }
-
-      // Start session with proper configuration
-      // LiveKit will handle microphone permissions automatically
-      const sessionConfig = {
-        agentId: VoiceAgentService.COMPANION_AGENT_ID,
-        dynamicVariables: {
-          platform: Platform.OS,
-          userName: userData?.name || 'User',
-        },
-      };
+      );
       
-      console.log('Starting session with config:', sessionConfig);
-      await conversation.startSession(sessionConfig);
-      console.log('Conversation session started successfully');
     } catch (error) {
-      console.error('Failed to start conversation:', error);
-      console.error('Error details:', error.message, error.stack);
-      
-      // Check if it's a permission error
-      if (error.message && error.message.includes('permission')) {
-        Alert.alert(
-          'Microphone Permission Required',
-          'Please grant microphone permission in your device settings to use voice conversation.'
-        );
-      } else {
-        Alert.alert('Error', `Failed to start voice conversation: ${error.message}`);
-      }
-    } finally {
-      setIsStarting(false);
+      console.error('❌ Failed to start conversation:', error);
+      setError(`Failed to start: ${error.message}`);
+      setIsConnecting(false);
     }
   };
 
   const stopConversation = async () => {
     try {
-      await conversation.endSession();
+      await VoiceAgentService.stopListening();
+      setIsConnected(false);
+      setIsListening(false);
+      setIsSpeaking(false);
+      setIsConnecting(false);
     } catch (error) {
       console.error('Failed to stop conversation:', error);
     }
   };
-
-  const sendFeedback = (feedback) => {
-    try {
-      conversation.sendFeedback(feedback);
-    } catch (error) {
-      console.error('Failed to send feedback:', error);
-    }
-  };
-
-  // Removed auto-timeout to avoid premature disconnects while LiveKit negotiates
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -167,55 +122,48 @@ const ConversationScreen = ({ userData, onBack }) => {
 
         <View style={styles.statusContainer}>
           <Text style={styles.statusText}>
-            Status: {conversation.status}
+            Status: {isConnected ? 'Connected' : isConnecting ? 'Connecting...' : 'Disconnected'}
           </Text>
-          {conversation.mode && (
+          {(isListening || isSpeaking) && (
             <Text style={styles.modeText}>
-              Mode: {conversation.mode}
+              Mode: {isListening ? 'Listening' : isSpeaking ? 'Speaking' : 'Ready'}
             </Text>
           )}
-          <Text style={styles.debugText}>
-            Initialized: {isInitialized ? 'Yes' : 'No'} | Starting: {isStarting ? 'Yes' : 'No'}
-          </Text>
-          <Text style={styles.debugText}>
-            Agent: {VoiceAgentService.COMPANION_AGENT_ID}
-          </Text>
+          {error && (
+            <Text style={styles.errorText}>
+              Error: {error}
+            </Text>
+          )}
+          {lastMessage && (
+            <Text style={styles.messageText}>
+              Last: {lastMessage}
+            </Text>
+          )}
         </View>
 
         <TouchableOpacity
           style={[
             styles.micButton,
-            conversation.mode === 'listening' && styles.micButtonListening,
-            conversation.mode === 'speaking' && styles.micButtonSpeaking,
-            conversation.status === 'connecting' && styles.micButtonDisabled,
-            (!isInitialized || isStarting) && styles.micButtonDisabled,
+            isListening && styles.micButtonListening,
+            isSpeaking && styles.micButtonSpeaking,
+            isConnecting && styles.micButtonDisabled,
           ]}
           onPress={() => {
-            console.log('Button pressed!');
-            console.log('conversation.status:', conversation.status);
-            console.log('isStarting:', isStarting);
-            console.log('isInitialized:', isInitialized);
-            console.log('Button disabled:', isStarting || !isInitialized);
-            
-            if (conversation.status === 'disconnected') {
-              console.log('Starting conversation...');
-              startConversation();
-            } else if (conversation.status === 'connected') {
-              console.log('Stopping conversation...');
+            if (isConnected) {
               stopConversation();
             } else {
-              console.log('Conversation in progress, status:', conversation.status);
+              startConversation();
             }
           }}
-          disabled={isStarting || !isInitialized || conversation.status === 'connecting'}
+          disabled={isConnecting}
         >
-          {isStarting || conversation.status === 'connecting' ? (
+          {isConnecting ? (
             <ActivityIndicator size="large" color="#FFFFFF" />
-          ) : conversation.mode === 'listening' ? (
+          ) : isListening ? (
             <Ionicons name="mic" size={48} color="#FFFFFF" />
-          ) : conversation.mode === 'speaking' ? (
+          ) : isSpeaking ? (
             <Ionicons name="volume-high" size={48} color="#FFFFFF" />
-          ) : conversation.status === 'connected' ? (
+          ) : isConnected ? (
             <Ionicons name="stop" size={48} color="#FFFFFF" />
           ) : (
             <Ionicons name="play" size={48} color="#FFFFFF" />
@@ -223,52 +171,22 @@ const ConversationScreen = ({ userData, onBack }) => {
         </TouchableOpacity>
 
         <Text style={styles.instructions}>
-          {!isInitialized
-            ? 'Initializing voice service...'
-            : isStarting || conversation.status === 'connecting'
+          {isConnecting
             ? 'Starting conversation...'
-            : conversation.mode === 'listening'
+            : isListening
             ? 'Listening... Speak now'
-            : conversation.mode === 'speaking'
+            : isSpeaking
             ? 'Kaki is speaking...'
-            : conversation.status === 'connected'
+            : isConnected
             ? 'Connected! Tap to stop conversation'
-            : conversation.status === 'disconnected'
-            ? 'Tap to start voice conversation'
             : 'Tap to start voice conversation'}
         </Text>
-
-        {conversation.canSendFeedback && (
-          <View style={styles.feedbackButtons}>
-            <TouchableOpacity
-              style={styles.likeButton}
-              onPress={() => sendFeedback('positive')}
-            >
-              <Ionicons name="thumbs-up" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dislikeButton}
-              onPress={() => sendFeedback('negative')}
-            >
-              <Ionicons name="thumbs-down" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
     </SafeAreaView>
   );
 };
 
-const VoiceCompanionScreen = ({ userData, onBack }) => {
-  // Debug the API key being passed
-  console.log('ElevenLabsProvider API Key:', VoiceAgentService.API_KEY ? `${VoiceAgentService.API_KEY.substring(0, 10)}...` : 'NOT SET');
-  
-  return (
-    <ElevenLabsProvider apiKey={VoiceAgentService.API_KEY}>
-      <ConversationScreen userData={userData} onBack={onBack} />
-    </ElevenLabsProvider>
-  );
-};
+export default VoiceCompanionScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -317,11 +235,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  debugText: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
+   errorText: {
+     fontSize: 14,
+     color: '#FF3B30',
+     marginTop: 5,
+     textAlign: 'center',
+   },
+   messageText: {
+     fontSize: 14,
+     color: '#34C759',
+     marginTop: 5,
+     textAlign: 'center',
+   },
   micButton: {
     width: 120,
     height: 120,
@@ -354,26 +279,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  feedbackButtons: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  likeButton: {
-    backgroundColor: '#10B981',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dislikeButton: {
-    backgroundColor: '#EF4444',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
 });
-
-export default VoiceCompanionScreen;

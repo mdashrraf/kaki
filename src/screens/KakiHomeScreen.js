@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ElevenLabsProvider, useConversation } from '@elevenlabs/react-native';
-import { Audio } from 'expo-av';
+import { Audio } from 'expo-audio';
 import VoiceAgentService from '../services/VoiceAgentService';
 
 const { width, height } = Dimensions.get('window');

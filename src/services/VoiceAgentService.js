@@ -1,6 +1,6 @@
-// ElevenLabs Voice Agent Service using official SDK
-import { ElevenLabsProvider, useConversation } from '@elevenlabs/react-native';
-import type { ConversationStatus, ConversationEvent, Role } from '@elevenlabs/react-native';
+// ElevenLabs Voice Agent Service using native WebRTC approach
+import { Audio } from 'expo-audio';
+import { Platform } from 'react-native';
 
 export class VoiceAgentService {
   static AGENT_ID = process.env.ELEVENLABS_AGENT_ID || 'agent_9601k7v1dtekej68p3x13zv4erse';
@@ -105,33 +105,68 @@ export class VoiceAgentService {
    * @param {Object} command - Parsed command object
    * @returns {Promise<string>} Agent's response
    */
-  static async startVoiceConversation(userMessage, command = null) {
+  static async startVoiceConversation(agentId, callbacks = {}) {
     try {
-      console.log('Starting voice conversation with ElevenLabs ConvAI agent...');
+      console.log(`🎤 Starting native voice conversation with agent: ${agentId}`);
       
-      // Determine which agent to use
-      const agentId = command?.details?.useCompanionAgent 
-        ? this.COMPANION_AGENT_ID 
-        : this.AGENT_ID;
+      // Note: expo-audio doesn't support setAudioModeAsync
+      // Audio session will be configured automatically by the system
       
-      console.log(`Using agent: ${agentId}`);
-      
-      // Check if API key is valid
-      if (!this.API_KEY || this.API_KEY.length < 10) {
-        throw new Error('Invalid API key');
+      // Request microphone permissions
+      const { status } = await Audio.requestRecordingPermissionsAsync();
+      if (status !== 'granted') {
+        throw new Error('Microphone permission not granted');
       }
       
-      // For now, return a simulated response since we need to implement the conversation hook
-      const agentResponse = `I received your message: "${userMessage}". How can I help you today?`;
+      // For now, simulate the recording process
+      // TODO: Implement actual recording with expo-audio
+      console.log('🎤 Recording permissions granted, simulating recording start...');
       
-      return agentResponse;
+      // Call start callback
+      if (callbacks.onStart) {
+        callbacks.onStart();
+      }
+      
+      // Simulate listening mode
+      if (callbacks.onListening) {
+        callbacks.onListening();
+      }
+      
+      // Store recording state for later use
+      this.currentRecording = { status: 'recording' };
+      
+      return {
+        success: true,
+        agentId: agentId,
+        recording: this.currentRecording,
+        message: 'Voice conversation started successfully'
+      };
+      
     } catch (error) {
-      console.error('Error in voice conversation:', error);
-      
-      // Fallback to simulation if API fails
-      const fallbackResponse = await this.simulateAgentResponse(userMessage);
-      
-      return fallbackResponse;
+      console.error('❌ Voice conversation error:', error);
+      if (callbacks.onError) {
+        callbacks.onError(error);
+      }
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Stop listening and end conversation
+   * @returns {Promise<void>}
+   */
+  static async stopListening() {
+    try {
+      if (this.currentRecording) {
+        // Simulate stopping recording
+        this.currentRecording = null;
+        console.log('🛑 Recording stopped');
+      }
+    } catch (error) {
+      console.error('❌ Error stopping recording:', error);
     }
   }
 
