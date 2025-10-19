@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { ElevenLabsProvider } from '@elevenlabs/react-native';
 import StartScreen from './src/screens/StartScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import KakiHomeScreen from './src/screens/KakiHomeScreen';
@@ -145,8 +146,10 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <StatusBar style="auto" />
-      {renderScreen()}
+      <ElevenLabsProvider apiKey={VoiceAgentService.API_KEY}>
+        <StatusBar style="auto" />
+        {renderScreen()}
+      </ElevenLabsProvider>
     </ErrorBoundary>
   );
 }

@@ -1,114 +1,104 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import SupabaseVoiceAgent from '../components/SupabaseVoiceAgent';
 import VoiceAgentService from '../services/VoiceAgentService';
-import { Audio } from 'expo-audio';
 
-const VoiceCompanionScreen = ({ userData, onBack }) => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [error, setError] = useState(null);
-  const [lastMessage, setLastMessage] = useState('');
+const ConversationScreen = ({ userData, onBack }) => {
+  const [isInitializing, setIsInitializing] = useState(false);
 
+  // Debug configuration on mount
   useEffect(() => {
-    initializeVoiceAgent();
+    console.log('🔧 VoiceCompanionScreen mounted, debugging config...');
+    VoiceAgentService.debugConfig();
+    
+    // Validate API key on mount
+    if (!VoiceAgentService.validateApiKey()) {
+      Alert.alert(
+        'Configuration Error',
+        'Invalid ElevenLabs API key. Please check your configuration.',
+        [{ text: 'OK' }]
+      );
+    } else {
+      // Test connection if API key is valid
+      testElevenLabsConnection();
+    }
   }, []);
 
-  const initializeVoiceAgent = async () => {
+  // Voice agent event handlers
+  const handleVoiceConnect = ({ conversationId }) => {
+    console.log('✅ Connected to ElevenLabs conversation:', conversationId);
+    setIsInitializing(false);
+  };
+
+  const handleVoiceDisconnect = (details) => {
+    console.log('❌ Disconnected from ElevenLabs:', details);
+    setIsInitializing(false);
+  };
+
+  const handleVoiceError = (error) => {
+    console.error('❌ ElevenLabs conversation error:', error);
+    console.error('❌ Error in conversation hook:', {
+      message: error?.message,
+      details: error
+    });
+    setIsInitializing(false);
+    // Show fallback option when native voice fails
+    VoiceAgentService.handleNativeVoiceFailure('companion', error);
+  };
+
+  const handleVoiceMessage = (message) => {
+    console.log('💬 Message received:', message);
+  };
+
+  // Auto-start conversation when screen mounts
+  useEffect(() => {
+    console.log('🔄 VoiceCompanionScreen mounted, ready for voice interaction');
+    console.log('👤 User data:', userData);
+    console.log('🔑 Agent ID:', VoiceAgentService.AGENT_ID);
+  }, []);
+
+  // Test ElevenLabs connection and configuration
+  const testElevenLabsConnection = async () => {
     try {
-      // Note: expo-audio doesn't support setAudioModeAsync
-      // Audio session will be configured automatically by the system
+      console.log('🧪 Testing ElevenLabs connection from companion screen...');
+      const results = await VoiceAgentService.testConnection();
       
-      // Test ElevenLabs connection
-      const connectionResults = await VoiceAgentService.testConnection();
-      if (connectionResults.mainAgent && connectionResults.companionAgent) {
-        console.log('✅ ElevenLabs agents connected successfully');
+      console.log('🧪 Test results:', results);
+      
+      if (results.error) {
+        Alert.alert(
+          'ElevenLabs Configuration Error',
+          `Connection test failed: ${results.error}`,
+          [
+            { text: 'OK' },
+            { 
+              text: 'Use Browser Fallback', 
+              onPress: () => VoiceAgentService.openBrowserAgent('companion')
+            }
+          ]
+        );
+      } else if (results.connectionWorking) {
+        console.log('✅ ElevenLabs connection test passed!');
       } else {
-        console.log('⚠️ ElevenLabs connection failed:', connectionResults.error);
-        setError(`API Error: ${connectionResults.error || 'Unknown error'}`);
+        Alert.alert(
+          'ElevenLabs Configuration Warning',
+          'Connection test failed. Voice features may not work properly.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
-      console.error('❌ Voice agent initialization error:', error);
-      setError(`Initialization Error: ${error.message}`);
+      console.error('❌ Connection test error:', error);
     }
   };
 
-  const startConversation = async () => {
-    if (isConnecting) return;
-    
-    setIsConnecting(true);
-    setError(null);
-    
-    try {
-      console.log('🎤 Starting voice conversation...');
-      
-      // Use VoiceAgentService to start conversation
-      const result = await VoiceAgentService.startVoiceConversation(
-        VoiceAgentService.COMPANION_AGENT_ID,
-        {
-          onStart: () => {
-            console.log('✅ Conversation started');
-            setIsConnected(true);
-            setIsConnecting(false);
-          },
-          onListening: () => {
-            console.log('🎤 Listening...');
-            setIsListening(true);
-            setIsSpeaking(false);
-          },
-          onSpeaking: () => {
-            console.log('🔊 Speaking...');
-            setIsSpeaking(true);
-            setIsListening(false);
-          },
-          onMessage: (message) => {
-            console.log('💬 Message:', message);
-            setLastMessage(message);
-          },
-          onError: (error) => {
-            console.error('❌ Conversation error:', error);
-            setError(error.message || 'Unknown error');
-            setIsConnecting(false);
-          },
-          onEnd: () => {
-            console.log('🛑 Conversation ended');
-            setIsConnected(false);
-            setIsListening(false);
-            setIsSpeaking(false);
-            setIsConnecting(false);
-          }
-        }
-      );
-      
-    } catch (error) {
-      console.error('❌ Failed to start conversation:', error);
-      setError(`Failed to start: ${error.message}`);
-      setIsConnecting(false);
-    }
-  };
-
-  const stopConversation = async () => {
-    try {
-      await VoiceAgentService.stopListening();
-      setIsConnected(false);
-      setIsListening(false);
-      setIsSpeaking(false);
-      setIsConnecting(false);
-    } catch (error) {
-      console.error('Failed to stop conversation:', error);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -120,70 +110,21 @@ const VoiceCompanionScreen = ({ userData, onBack }) => {
         <Text style={styles.title}>Your Kaki Companion</Text>
         <Text style={styles.subtitle}>Voice-enabled AI assistant</Text>
 
-        <View style={styles.statusContainer}>
-          <Text style={styles.statusText}>
-            Status: {isConnected ? 'Connected' : isConnecting ? 'Connecting...' : 'Disconnected'}
-          </Text>
-          {(isListening || isSpeaking) && (
-            <Text style={styles.modeText}>
-              Mode: {isListening ? 'Listening' : isSpeaking ? 'Speaking' : 'Ready'}
-            </Text>
-          )}
-          {error && (
-            <Text style={styles.errorText}>
-              Error: {error}
-            </Text>
-          )}
-          {lastMessage && (
-            <Text style={styles.messageText}>
-              Last: {lastMessage}
-            </Text>
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.micButton,
-            isListening && styles.micButtonListening,
-            isSpeaking && styles.micButtonSpeaking,
-            isConnecting && styles.micButtonDisabled,
-          ]}
-          onPress={() => {
-            if (isConnected) {
-              stopConversation();
-            } else {
-              startConversation();
-            }
-          }}
-          disabled={isConnecting}
-        >
-          {isConnecting ? (
-            <ActivityIndicator size="large" color="#FFFFFF" />
-          ) : isListening ? (
-            <Ionicons name="mic" size={48} color="#FFFFFF" />
-          ) : isSpeaking ? (
-            <Ionicons name="volume-high" size={48} color="#FFFFFF" />
-          ) : isConnected ? (
-            <Ionicons name="stop" size={48} color="#FFFFFF" />
-          ) : (
-            <Ionicons name="play" size={48} color="#FFFFFF" />
-          )}
-        </TouchableOpacity>
-
-        <Text style={styles.instructions}>
-          {isConnecting
-            ? 'Starting conversation...'
-            : isListening
-            ? 'Listening... Speak now'
-            : isSpeaking
-            ? 'Kaki is speaking...'
-            : isConnected
-            ? 'Connected! Tap to stop conversation'
-            : 'Tap to start voice conversation'}
-        </Text>
+        <SupabaseVoiceAgent
+          onConnect={handleVoiceConnect}
+          onDisconnect={handleVoiceDisconnect}
+          onError={handleVoiceError}
+          onMessage={handleVoiceMessage}
+          userName={userData?.name || 'User'}
+          context="companion_mode"
+        />
       </View>
     </SafeAreaView>
   );
+};
+
+const VoiceCompanionScreen = ({ userData, onBack }) => {
+  return <ConversationScreen userData={userData} onBack={onBack} />;
 };
 
 export default VoiceCompanionScreen;

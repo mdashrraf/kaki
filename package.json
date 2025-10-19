@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@config-plugins/react-native-webrtc": "^13.0.0",
+    "@elevenlabs/react": "^0.8.0",
     "@elevenlabs/react-native": "^0.4.3",
     "@expo/vector-icons": "^15.0.2",
     "@figma/rest-api-spec": "^0.34.0",
@@ -46,6 +47,7 @@
     "expo-status-bar": "~3.0.8",
     "figma-api": "^2.1.0-beta",
     "livekit-client": "^2.15.11",
+    "lucide-react-native": "^0.546.0",
     "metro-react-native-babel-transformer": "^0.77.0",
     "react": "19.1.0",
     "react-native": "0.81.4",
@@ -57,5 +59,9 @@
     "react-native-svg-transformer": "^1.5.1",
     "react-native-webview": "13.15.0"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@types/react": "~19.1.10",
+    "typescript": "~5.9.2"
+  }
 }

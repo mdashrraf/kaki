@@ -1,14 +1,27 @@
 // ElevenLabs Voice Agent Service using native WebRTC approach
-import { Audio } from 'expo-audio';
-import { Platform } from 'react-native';
+// Using native approach without expo-audio for now
+import { Platform, Linking, Alert } from 'react-native';
 
 export class VoiceAgentService {
-  static AGENT_ID = process.env.ELEVENLABS_AGENT_ID || 'agent_9601k7v1dtekej68p3x13zv4erse';
-  static COMPANION_AGENT_ID = 'agent_8601k7tybe14e16tf75gmjdede86'; // Original companion agent
+  // Single agent ID for all voice interactions
+  static AGENT_ID = 'agent_9601k7v1dtekej68p3x13zv4erse';
   static ELEVENLABS_BASE_URL = process.env.ELEVENLABS_BASE_URL || 'https://api.elevenlabs.io/v1';
   
   // ElevenLabs API key from environment variables
   static API_KEY = process.env.ELEVENLABS_API_KEY || 'sk_d36b1447eff28551002fb3d641123db1ebcc0f2f6ccba9a0';
+  
+  // Validate API key format
+  static validateApiKey() {
+    if (!this.API_KEY || this.API_KEY.length < 20) {
+      console.error('❌ Invalid API key format');
+      return false;
+    }
+    if (!this.API_KEY.startsWith('sk_')) {
+      console.error('❌ API key should start with "sk_"');
+      return false;
+    }
+    return true;
+  }
 
   // Debug method to check configuration
   static debugConfig() {
@@ -17,6 +30,8 @@ export class VoiceAgentService {
     console.log('AGENT_ID:', this.AGENT_ID);
     console.log('BASE_URL:', this.ELEVENLABS_BASE_URL);
     console.log('Environment variables loaded:', !!process.env.ELEVENLABS_API_KEY);
+    console.log('Full API_KEY length:', this.API_KEY?.length);
+    console.log('Is agent available:', this.isAgentAvailable());
   }
 
   /**
@@ -105,70 +120,8 @@ export class VoiceAgentService {
    * @param {Object} command - Parsed command object
    * @returns {Promise<string>} Agent's response
    */
-  static async startVoiceConversation(agentId, callbacks = {}) {
-    try {
-      console.log(`🎤 Starting native voice conversation with agent: ${agentId}`);
-      
-      // Note: expo-audio doesn't support setAudioModeAsync
-      // Audio session will be configured automatically by the system
-      
-      // Request microphone permissions
-      const { status } = await Audio.requestRecordingPermissionsAsync();
-      if (status !== 'granted') {
-        throw new Error('Microphone permission not granted');
-      }
-      
-      // For now, simulate the recording process
-      // TODO: Implement actual recording with expo-audio
-      console.log('🎤 Recording permissions granted, simulating recording start...');
-      
-      // Call start callback
-      if (callbacks.onStart) {
-        callbacks.onStart();
-      }
-      
-      // Simulate listening mode
-      if (callbacks.onListening) {
-        callbacks.onListening();
-      }
-      
-      // Store recording state for later use
-      this.currentRecording = { status: 'recording' };
-      
-      return {
-        success: true,
-        agentId: agentId,
-        recording: this.currentRecording,
-        message: 'Voice conversation started successfully'
-      };
-      
-    } catch (error) {
-      console.error('❌ Voice conversation error:', error);
-      if (callbacks.onError) {
-        callbacks.onError(error);
-      }
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * Stop listening and end conversation
-   * @returns {Promise<void>}
-   */
-  static async stopListening() {
-    try {
-      if (this.currentRecording) {
-        // Simulate stopping recording
-        this.currentRecording = null;
-        console.log('🛑 Recording stopped');
-      }
-    } catch (error) {
-      console.error('❌ Error stopping recording:', error);
-    }
-  }
+  // ElevenLabs handles all voice conversation logic
+  // No custom audio management needed
 
   /**
    * Simulate agent response (replace with actual ElevenLabs API call)
@@ -252,59 +205,53 @@ export class VoiceAgentService {
   }
 
   /**
-   * Test ElevenLabs API connection for both agents
-   * @returns {Promise<Object>} Connection status for both agents
+   * Test ElevenLabs API connection and single agent configuration
+   * @returns {Promise<Object>} Connection status and agent validation
    */
   static async testConnection() {
     try {
       const results = {
-        mainAgent: false,
-        companionAgent: false,
+        apiKeyValid: false,
+        connectionWorking: false,
         error: null,
       };
 
+      console.log('🧪 Testing ElevenLabs connection for single agent:', this.AGENT_ID);
+
       // Check if API key is valid
-      if (!this.API_KEY || this.API_KEY.length < 10) {
-        results.error = 'Invalid API key';
+      if (!this.validateApiKey()) {
+        results.error = 'Invalid API key format';
         return results;
       }
 
-      // Test with a simple text-to-speech request
+      results.apiKeyValid = true;
+      console.log('✅ API key format is valid');
+
+      // Test API connection with user info endpoint
       try {
-        const response = await fetch(`${this.ELEVENLABS_BASE_URL}/text-to-speech/21m00Tcm4TlvDq8ikWAM`, {
-          method: 'POST',
+        const response = await fetch(`${this.ELEVENLABS_BASE_URL}/user`, {
+          method: 'GET',
           headers: {
-            'Accept': 'audio/mpeg',
-            'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'xi-api-key': this.API_KEY,
           },
-          body: JSON.stringify({
-            text: 'Test',
-            model_id: 'eleven_monolingual_v1',
-          }),
         });
         
         if (response.ok) {
-          results.mainAgent = true;
-          results.companionAgent = true; // Same API key works for both
+          const userData = await response.json();
+          console.log('✅ API connection successful:', userData);
+          results.connectionWorking = true;
         } else {
           const errorText = await response.text();
-          console.log('ElevenLabs API Error Details:', {
+          console.log('❌ API Error Details:', {
             status: response.status,
             errorText: errorText
           });
           
-          if (response.status === 403) {
-            results.error = 'API key does not have permission to access ElevenLabs features';
-          } else if (response.status === 401) {
-            // Check if it's a quota issue
-            if (errorText.includes('quota_exceeded')) {
-              results.error = 'ElevenLabs API quota exceeded. Please upgrade your plan or wait for quota reset.';
-            } else if (errorText.includes('missing_permissions')) {
-              results.error = 'API key has limited permissions. Please check your ElevenLabs account settings.';
-            } else {
-              results.error = `Invalid API key - ${errorText}`;
-            }
+          if (response.status === 401) {
+            results.error = 'Invalid API key - authentication failed';
+          } else if (response.status === 403) {
+            results.error = 'API key does not have required permissions';
           } else if (response.status === 429) {
             results.error = 'Rate limit exceeded';
           } else {
@@ -317,10 +264,10 @@ export class VoiceAgentService {
 
       return results;
     } catch (error) {
-      console.error('ElevenLabs connection test failed:', error);
+      console.error('❌ ElevenLabs connection test failed:', error);
       return { 
-        mainAgent: false, 
-        companionAgent: false, 
+        apiKeyValid: false, 
+        connectionWorking: false, 
         error: error.message 
       };
     }
@@ -333,6 +280,107 @@ export class VoiceAgentService {
   static isAgentAvailable() {
     return this.API_KEY && this.API_KEY.length > 0;
   }
+
+  /**
+   * Test if the agent works with conversational AI endpoints
+   * This might work even if the agent endpoint returns 404
+   */
+  static async testConversationalAIEndpoint() {
+    try {
+      console.log('🧪 Testing conversational AI endpoint...');
+      
+      // Try to create a conversation session
+      const response = await fetch(`${this.ELEVENLABS_BASE_URL}/convai/conversations`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'xi-api-key': this.API_KEY,
+        },
+        body: JSON.stringify({
+          agent_id: this.AGENT_ID,
+        }),
+      });
+      
+      console.log('📊 ConvAI response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Conversational AI endpoint works:', data);
+        return { success: true, data };
+      } else {
+        const errorText = await response.text();
+        console.log('❌ ConvAI endpoint failed:', errorText);
+        return { success: false, error: errorText };
+      }
+    } catch (error) {
+      console.log('❌ ConvAI endpoint error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Open voice agent in browser as fallback
+   * @param {string} context - Context for the conversation (home, companion, etc.)
+   */
+  static async openBrowserAgent(context = 'companion') {
+    try {
+      // Use the ElevenLabs conversational AI page instead of a specific agent
+      // This will work even if the agent ID is invalid
+      const browserUrl = `https://elevenlabs.io/conversational-ai`;
+      
+      console.log('🌐 Opening voice agent in browser:', browserUrl);
+      
+      const supported = await Linking.canOpenURL(browserUrl);
+      if (supported) {
+        await Linking.openURL(browserUrl);
+        console.log('✅ Browser agent opened successfully');
+        Alert.alert(
+          'Browser Voice Agent',
+          'ElevenLabs conversational AI opened in your browser. You can create a new agent there and update the agent ID in the app.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        console.error('❌ Cannot open browser URL:', browserUrl);
+        Alert.alert(
+          'Browser Not Supported',
+          'Unable to open the voice agent in your browser. Please try again later.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('❌ Error opening browser agent:', error);
+      Alert.alert(
+        'Error',
+        'Failed to open voice agent in browser. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  }
+
+
+
+  /**
+   * Handle fallback when native voice fails
+   * @param {string} context - Context for the conversation
+   * @param {Error} error - The error that occurred
+   */
+  static handleNativeVoiceFailure(context = 'companion', error = null) {
+    console.error('❌ Native voice agent failed:', error);
+    
+    Alert.alert(
+      'Voice Agent Unavailable',
+      'The voice agent is currently unavailable. Would you like to use the browser version instead?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Open in Browser', 
+          onPress: () => this.openBrowserAgent(context)
+        }
+      ]
+    );
+  }
+
 }
 
 export default VoiceAgentService;
