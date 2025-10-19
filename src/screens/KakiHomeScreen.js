@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,9 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
-  Alert,
-  Platform,
-  PermissionsAndroid,
-  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import SupabaseVoiceAgent from '../components/SupabaseVoiceAgent';
-import VoiceAgentService from '../services/VoiceAgentService';
 
 const { width, height } = Dimensions.get('window');
 const isSmallScreen = height < 700;
@@ -26,257 +20,16 @@ const cardSize = (width - horizontalPadding - cardSpacing) / 2;
 
 const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoicePress, onCompanionPress }) => {
   const userName = userData?.name || 'User';
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
-  const [permissionsGranted, setPermissionsGranted] = useState(false);
   
   useEffect(() => {
     console.log('🏠 KakiHomeScreen mounted');
     console.log('👤 User data:', userData);
-    VoiceAgentService.debugConfig();
-    
-    // Validate API key on mount
-    if (!VoiceAgentService.validateApiKey()) {
-      Alert.alert(
-        'Configuration Error',
-        'Invalid ElevenLabs API key. Please check your configuration.',
-        [{ text: 'OK' }]
-      );
-    } else {
-      // Test connection if API key is valid
-      testElevenLabsConnection();
-    }
   }, []);
 
-  const requestPermissions = async () => {
-    try {
-      console.log('🔐 Requesting permissions...');
-      console.log('📱 Platform:', Platform.OS);
-      
-      if (Platform.OS === 'android') {
-        console.log('🤖 Requesting Android permissions...');
-        
-        // Check current permission status first
-        const currentPermissions = await PermissionsAndroid.checkMultiple([
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-        ]);
-        
-        console.log('📊 Current Android permissions:', currentPermissions);
-        
-        // Request permissions
-        const granted = await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-        ]);
 
-        console.log('📊 Permission request results:', granted);
 
-        const micGranted = granted['android.permission.RECORD_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED;
-        const fineLocationGranted = granted['android.permission.ACCESS_FINE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED;
-        const coarseLocationGranted = granted['android.permission.ACCESS_COARSE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED;
-        const locationGranted = fineLocationGranted || coarseLocationGranted;
-
-        console.log('📱 Android permission results:', { 
-          micGranted, 
-          fineLocationGranted, 
-          coarseLocationGranted, 
-          locationGranted 
-        });
-        
-        if (!micGranted) {
-          console.log('❌ Microphone permission denied');
-          Alert.alert(
-            'Microphone Permission Required',
-            'Kaki needs microphone permission to provide voice assistance. This permission is essential for voice commands and conversations.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() }
-            ]
-          );
-          setPermissionsGranted(false);
-        } else {
-          console.log('✅ Microphone permission granted');
-          setPermissionsGranted(true);
-        }
-        
-        if (!locationGranted) {
-          console.log('⚠️ Location permission not granted');
-          Alert.alert(
-            'Location Permission Recommended',
-            'Location access helps Kaki provide better service recommendations like nearby restaurants, ride pickup locations, and local delivery options.',
-            [
-              { text: 'Skip', style: 'cancel' },
-              { text: 'Grant Permission', onPress: () => Linking.openSettings() }
-            ]
-          );
-        } else {
-          console.log('✅ Location permission granted');
-        }
-        
-      } else {
-        console.log('🍎 iOS: Checking permissions...');
-        
-        try {
-          // For iOS, we need to check if permissions are already granted
-          // and handle the case where they need to be requested
-          console.log('📱 iOS: Microphone permission will be requested when voice is used');
-          
-          // Check if we can access microphone (this will trigger permission request if needed)
-          // We'll set permissions granted to true and let the voice agent handle the actual request
-          setPermissionsGranted(true);
-          console.log('✅ iOS permissions setup completed');
-          
-        } catch (audioError) {
-          console.error('❌ iOS permission setup error:', audioError);
-          setPermissionsGranted(false);
-        }
-      }
-      
-      console.log('🔐 Permission request completed. Granted:', permissionsGranted);
-      
-    } catch (error) {
-      console.error('❌ Permission request error:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      setPermissionsGranted(false);
-    }
-  };
-
-  // Test ElevenLabs connection and configuration
-  const testElevenLabsConnection = async () => {
-    try {
-      console.log('🧪 Testing ElevenLabs connection from home screen...');
-      const results = await VoiceAgentService.testConnection();
-      
-      console.log('🧪 Test results:', results);
-      
-      if (results.error) {
-        Alert.alert(
-          'ElevenLabs Configuration Error',
-          `Connection test failed: ${results.error}`,
-          [
-            { text: 'OK' },
-            { 
-              text: 'Use Browser Fallback', 
-              onPress: () => VoiceAgentService.openBrowserAgent('home_screen')
-            }
-          ]
-        );
-      } else if (results.connectionWorking) {
-        console.log('✅ ElevenLabs connection test passed!');
-        setPermissionsGranted(true);
-      } else {
-        Alert.alert(
-          'ElevenLabs Configuration Warning',
-          'Connection test failed. Voice features may not work properly.',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      console.error('❌ Connection test error:', error);
-    }
-  };
-
-  // Check if we have necessary permissions before starting voice
-  const checkPermissionsBeforeVoice = async () => {
-    try {
-      if (Platform.OS === 'android') {
-        const micPermission = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
-        );
-        
-        if (!micPermission) {
-          console.log('❌ Microphone permission not granted, requesting...');
-          const result = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
-          );
-          
-          if (result !== PermissionsAndroid.RESULTS.GRANTED) {
-            Alert.alert(
-              'Microphone Permission Required',
-              'Please grant microphone permission to use voice features.',
-              [{ text: 'OK' }]
-            );
-            return false;
-          }
-        }
-        
-        console.log('✅ Microphone permission verified');
-        return true;
-      } else {
-        // For iOS, we assume permission will be requested by the SDK
-        console.log('🍎 iOS: Assuming microphone permission will be handled by SDK');
-        return true;
-      }
-    } catch (error) {
-      console.error('❌ Permission check error:', error);
-      return false;
-    }
-  };
   
-  // Voice agent event handlers
-  const handleVoiceConnect = ({ conversationId }) => {
-    console.log('✅ Connected to conversation', conversationId);
-    setIsVoiceActive(true);
-  };
 
-  const handleVoiceDisconnect = (details) => {
-    console.log('❌ Disconnected from conversation', details);
-    setIsVoiceActive(false);
-  };
-
-  const handleVoiceError = (error) => {
-    console.error('❌ Conversation error:', error);
-    console.error('❌ Error in home screen conversation:', {
-      message: error?.message,
-      details: error
-    });
-    setIsVoiceActive(false);
-    // Show fallback option when native voice fails
-    VoiceAgentService.handleNativeVoiceFailure('home_screen', error);
-  };
-
-  const handleVoiceMessage = (message) => {
-    console.log('💬 Message received:', message);
-    
-    // Parse agent responses for navigation commands
-    if (message.source === 'agent' && message.type === 'agent_response') {
-      const responseText = message.message?.toLowerCase() || '';
-      const command = VoiceAgentService.parseVoiceCommand(responseText);
-      
-      // Navigate based on agent's understanding
-      if (command.action !== 'companion') {
-        setTimeout(() => {
-          switch (command.action) {
-            case 'ride':
-              onVoicePress && onVoicePress('ride-booking');
-              break;
-            case 'food':
-              onVoicePress && onVoicePress('food-ordering');
-              break;
-            case 'grocery':
-              onVoicePress && onVoicePress('grocery-ordering');
-              break;
-            case 'bills':
-              onVoicePress && onVoicePress('bill-payment');
-              break;
-          }
-        }, 1000);
-      }
-    }
-  };
-
-  // Debug voice agent state on mount
-  useEffect(() => {
-    console.log('🔄 Voice agent wrapper initialized');
-    console.log('👤 User data:', userData);
-    console.log('🔑 Agent ID:', VoiceAgentService.AGENT_ID);
-  }, []);
   
   const actionCards = [
     {
@@ -383,25 +136,9 @@ const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoi
 
       {/* Voice Command Section */}
       <View style={styles.voiceSection}>
-        <SupabaseVoiceAgent
-          onConnect={handleVoiceConnect}
-          onDisconnect={handleVoiceDisconnect}
-          onError={handleVoiceError}
-          onMessage={handleVoiceMessage}
-          userName={userName}
-          context="home_screen_voice_command"
-        />
-        
-        {/* Permission Status Indicator */}
-        {!permissionsGranted && (
-          <View style={styles.permissionWarning}>
-            <Ionicons name="warning" size={16} color="#FF9500" />
-            <Text style={styles.permissionWarningText}>
-              Microphone permission required for voice features
-            </Text>
-          </View>
-        )}
-
+        <Text style={styles.voiceInstruction}>
+          Voice features are temporarily disabled
+        </Text>
       </View>
     </SafeAreaView>
   );

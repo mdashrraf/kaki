@@ -1,103 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import SupabaseVoiceAgent from '../components/SupabaseVoiceAgent';
-import VoiceAgentService from '../services/VoiceAgentService';
 
 const ConversationScreen = ({ userData, onBack }) => {
-  const [isInitializing, setIsInitializing] = useState(false);
 
-  // Debug configuration on mount
   useEffect(() => {
-    console.log('🔧 VoiceCompanionScreen mounted, debugging config...');
-    VoiceAgentService.debugConfig();
-    
-    // Validate API key on mount
-    if (!VoiceAgentService.validateApiKey()) {
-      Alert.alert(
-        'Configuration Error',
-        'Invalid ElevenLabs API key. Please check your configuration.',
-        [{ text: 'OK' }]
-      );
-    } else {
-      // Test connection if API key is valid
-      testElevenLabsConnection();
-    }
-  }, []);
-
-  // Voice agent event handlers
-  const handleVoiceConnect = ({ conversationId }) => {
-    console.log('✅ Connected to ElevenLabs conversation:', conversationId);
-    setIsInitializing(false);
-  };
-
-  const handleVoiceDisconnect = (details) => {
-    console.log('❌ Disconnected from ElevenLabs:', details);
-    setIsInitializing(false);
-  };
-
-  const handleVoiceError = (error) => {
-    console.error('❌ ElevenLabs conversation error:', error);
-    console.error('❌ Error in conversation hook:', {
-      message: error?.message,
-      details: error
-    });
-    setIsInitializing(false);
-    // Show fallback option when native voice fails
-    VoiceAgentService.handleNativeVoiceFailure('companion', error);
-  };
-
-  const handleVoiceMessage = (message) => {
-    console.log('💬 Message received:', message);
-  };
-
-  // Auto-start conversation when screen mounts
-  useEffect(() => {
-    console.log('🔄 VoiceCompanionScreen mounted, ready for voice interaction');
+    console.log('🔧 VoiceCompanionScreen mounted');
     console.log('👤 User data:', userData);
-    console.log('🔑 Agent ID:', VoiceAgentService.AGENT_ID);
   }, []);
 
-  // Test ElevenLabs connection and configuration
-  const testElevenLabsConnection = async () => {
-    try {
-      console.log('🧪 Testing ElevenLabs connection from companion screen...');
-      const results = await VoiceAgentService.testConnection();
-      
-      console.log('🧪 Test results:', results);
-      
-      if (results.error) {
-        Alert.alert(
-          'ElevenLabs Configuration Error',
-          `Connection test failed: ${results.error}`,
-          [
-            { text: 'OK' },
-            { 
-              text: 'Use Browser Fallback', 
-              onPress: () => VoiceAgentService.openBrowserAgent('companion')
-            }
-          ]
-        );
-      } else if (results.connectionWorking) {
-        console.log('✅ ElevenLabs connection test passed!');
-      } else {
-        Alert.alert(
-          'ElevenLabs Configuration Warning',
-          'Connection test failed. Voice features may not work properly.',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      console.error('❌ Connection test error:', error);
-    }
-  };
+
+
 
 
   return (
@@ -110,14 +29,9 @@ const ConversationScreen = ({ userData, onBack }) => {
         <Text style={styles.title}>Your Kaki Companion</Text>
         <Text style={styles.subtitle}>Voice-enabled AI assistant</Text>
 
-        <SupabaseVoiceAgent
-          onConnect={handleVoiceConnect}
-          onDisconnect={handleVoiceDisconnect}
-          onError={handleVoiceError}
-          onMessage={handleVoiceMessage}
-          userName={userData?.name || 'User'}
-          context="companion_mode"
-        />
+        <Text style={styles.placeholder}>
+          Voice features are temporarily disabled
+        </Text>
       </View>
     </SafeAreaView>
   );
@@ -219,5 +133,12 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
     marginBottom: 20,
+  },
+  placeholder: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 40,
+    fontStyle: 'italic',
   },
 });
