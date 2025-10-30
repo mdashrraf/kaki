@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import ConvAiDOMComponent from '../components/ConvAI';
 import {
   View,
   Text,
@@ -12,73 +13,35 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 const isSmallScreen = height < 700;
-
-// Calculate responsive card size based on screen width and padding
-const horizontalPadding = 40; // 20px padding on each side
-const cardSpacing = 20; // Space between cards
+const horizontalPadding = 40;
+const cardSpacing = 20;
 const cardSize = (width - horizontalPadding - cardSpacing) / 2;
 
 const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoicePress, onCompanionPress }) => {
   const userName = userData?.name || 'User';
-  
   useEffect(() => {
     console.log('🏠 KakiHomeScreen mounted');
     console.log('👤 User data:', userData);
-  }, []);
+  }, [userData]);
 
+  // Voice agent state for feedback
+  const [voiceStatus, setVoiceStatus] = useState('disconnected');
+  const [voiceError, setVoiceError] = useState(null);
+  const [voiceMessage, setVoiceMessage] = useState('');
+  const agentId = 'agent_9601k7v1dtekej68p3x13zv4erse'; // Set to valid ElevenLabs agent ID
 
-
-  
-
-  
   const actionCards = [
-    {
-      id: 'ride',
-      title: 'Book a ride',
-      icon: 'car',
-      color: '#007AFF',
-    },
-    {
-      id: 'meal',
-      title: 'Order a meal',
-      icon: 'restaurant',
-      color: '#34C759',
-    },
-    {
-      id: 'groceries',
-      title: 'Order groceries',
-      icon: 'cart',
-      color: '#AF52DE',
-    },
-    {
-      id: 'alerts',
-      title: 'Set Alerts',
-      icon: 'notifications',
-      color: '#FF9500',
-    },
-    {
-      id: 'emergency',
-      title: 'Emergency',
-      icon: 'call',
-      color: '#FF3B30',
-    },
-    {
-      id: 'bills',
-      title: 'Bill Payments',
-      icon: 'card',
-      color: '#8E8E93',
-    },
-    {
-      id: 'companion',
-      title: 'Companion',
-      icon: 'heart',
-      color: '#FF2D92',
-    },
+    { id: 'ride', title: 'Book a ride', icon: 'car', color: '#007AFF' },
+    { id: 'meal', title: 'Order a meal', icon: 'restaurant', color: '#34C759' },
+    { id: 'groceries', title: 'Order groceries', icon: 'cart', color: '#AF52DE' },
+    { id: 'alerts', title: 'Set Alerts', icon: 'notifications', color: '#FF9500' },
+    { id: 'emergency', title: 'Emergency', icon: 'call', color: '#FF3B30' },
+    { id: 'bills', title: 'Bill Payments', icon: 'card', color: '#8E8E93' },
+    { id: 'companion', title: 'Companion', icon: 'heart', color: '#FF2D92' },
   ];
 
   const handleActionPress = (actionId) => {
     console.log(`Action pressed: ${actionId}`);
-    
     if (actionId === 'companion') {
       if (onCompanionPress) {
         onCompanionPress();
@@ -94,7 +57,6 @@ const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoi
       onSettingsPress();
     }
   };
-
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -116,16 +78,13 @@ const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoi
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.cardsGrid}>
-          {actionCards.map((card, index) => (
+          {actionCards.map((card) => (
             <TouchableOpacity
               key={card.id}
-              style={[
-                styles.actionCard,
-                { width: cardSize }
-              ]}
+              style={[styles.actionCard, { width: cardSize }]}
               onPress={() => handleActionPress(card.id)}
             >
-              <View style={[styles.iconContainer, { backgroundColor: card.color }]}>
+              <View style={[styles.iconContainer, { backgroundColor: card.color }]}> 
                 <Ionicons name={card.icon} size={isSmallScreen ? 18 : 20} color="#FFFFFF" />
               </View>
               <Text style={styles.cardTitle}>{card.title}</Text>
@@ -136,9 +95,37 @@ const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoi
 
       {/* Voice Command Section */}
       <View style={styles.voiceSection}>
+        <ConvAiDOMComponent
+          agentId={agentId}
+          onConnect={() => {
+            setVoiceStatus('connected');
+            setVoiceError(null);
+          }}
+          onDisconnect={() => {
+            setVoiceStatus('disconnected');
+          }}
+          onMessage={msg => {
+            setVoiceMessage(typeof msg === 'string' ? msg : JSON.stringify(msg));
+          }}
+          onError={err => {
+            setVoiceError(err);
+            setVoiceStatus('disconnected');
+          }}
+        />
         <Text style={styles.voiceInstruction}>
-          Voice features are temporarily disabled
+          {voiceStatus === 'connected' ? 'Listening...' : 'Tap the mic to talk'}
         </Text>
+        {voiceMessage ? (
+          <Text style={styles.testInfo}>Agent: {voiceMessage}</Text>
+        ) : null}
+        {voiceError ? (
+          <View style={styles.permissionWarning}>
+            <Ionicons name="warning" size={16} color="#856404" />
+            <Text style={styles.permissionWarningText}>
+              {voiceError.message || String(voiceError)}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -147,29 +134,31 @@ const KakiHomeScreenContent = ({ userData, onSettingsPress, onActionPress, onVoi
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: '#FFFFFF',
   },
-      header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        paddingHorizontal: 20,
-        paddingTop: isSmallScreen ? 70 : 80, // Responsive top padding for proper spacing
-        paddingBottom: 20,
-      },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 20,
+    backgroundColor: '#F8F8F8',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
   headerLeft: {
     flex: 1,
   },
   greeting: {
-    fontSize: isSmallScreen ? 24 : 28, // Responsive font size
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#000000',
-    marginBottom: 4,
   },
   subtitle: {
-    fontSize: isSmallScreen ? 14 : 16, // Responsive font size
-    color: '#8E8E93',
+    fontSize: 14,
     fontWeight: '400',
+    color: '#8E8E93',
   },
   settingsButton: {
     padding: 8,

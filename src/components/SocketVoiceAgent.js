@@ -38,6 +38,8 @@ const SocketVoiceAgent = ({
   const initializeAudio = async () => {
     try {
       // Request audio permissions
+
+      // Use Expo's Permissions API for microphone
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Required', 'Microphone permission is required for voice features');

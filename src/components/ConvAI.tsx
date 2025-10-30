@@ -1,17 +1,40 @@
-'use dom';
+
+'use client';
 
 import { useConversation } from '@elevenlabs/react';
 import { Mic } from 'lucide-react-native';
 import { useCallback } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 
+
+import { Platform, Alert } from 'react-native';
+// Only import expo-audio on native
+import * as Permissions from 'expo-permissions';
+
 async function requestMicrophonePermission() {
-  try {
-    await navigator.mediaDevices.getUserMedia({ audio: true });
-    return true;
-  } catch (error) {
-    console.error('Microphone permission denied', error);
-    return false;
+  if (Platform.OS === 'web') {
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      return true;
+    } catch (error) {
+      console.error('Microphone permission denied', error);
+      Alert.alert('Permission Required', 'Microphone permission is required.');
+      return false;
+    }
+  } else {
+    try {
+      // Use expo-permissions to request microphone permission
+      const { status } = await Permissions.askAsync(Permissions.AUDIO_RECORDING);
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Microphone permission is required.');
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Microphone permission denied', error);
+      Alert.alert('Permission Required', 'Microphone permission is required.');
+      return false;
+    }
   }
 }
 
@@ -38,16 +61,18 @@ export default function ConvAiDOMComponent({ agentId, onConnect, onDisconnect, o
   const startConversation = useCallback(async () => {
     const hasPermission = await requestMicrophonePermission();
     if (!hasPermission) {
-      alert('Microphone permission is required.');
+      // Alert already shown in permission function
       return;
     }
 
     try {
       await conversation.startSession({
         agentId: agentId,
+        connectionType: 'websocket',
       });
     } catch (error) {
       console.error('Failed to start conversation:', error);
+      Alert.alert('Voice Agent Error', error.message || String(error));
     }
   }, [conversation, agentId]);
 

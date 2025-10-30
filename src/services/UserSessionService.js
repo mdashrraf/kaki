@@ -14,8 +14,8 @@ export class UserSessionService {
       const sessionData = {
         userId: userData.id,
         name: userData.name,
-        phoneNumber: userData.phone_number,
-        countryCode: userData.country_code,
+        phoneNumber: userData.phoneNumber || userData.phone_number,
+        countryCode: userData.countryCode || userData.country_code,
         lastLogin: new Date().toISOString(),
       };
       

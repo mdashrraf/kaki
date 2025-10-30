@@ -31,8 +31,12 @@ const ElevenLabsWidget = ({ agentId, onMessage }) => {
       source={{ html: htmlContent }}
       style={{ flex: 1 }}
       onMessage={(event) => {
-        if (onMessage) {
-          onMessage(event.nativeEvent.data);
+        try {
+          if (onMessage) {
+            onMessage(event.nativeEvent.data);
+          }
+        } catch (error) {
+          console.error('WebView onMessage error:', error);
         }
       }}
       javaScriptEnabled={true}
